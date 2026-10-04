@@ -30,19 +30,22 @@
 <!-- Sticky Minimal Customer Navbar -->
 <header id="mainNavbar" class="navbar {% if request.path == '/' %}nav-transparent{% else %}nav-solid{% endif %}">
   <div class="container nav-inner">
-    <!-- Brandmark -->
-    <a href="/" class="nav-brand" aria-label="SmartCafe Homepage">
-      SMARTCAFE
-    </a>
+    <!-- Left Brand & Desktop Links -->
+    <div class="nav-left" style="display: flex; align-items: center; gap: clamp(28px, 3.5vw, 52px);">
+      <!-- Brandmark -->
+      <a href="/" class="nav-brand" aria-label="SmartCafe Homepage">
+        SMARTCAFE
+      </a>
 
-    <!-- Desktop Navigation Links -->
-    <nav class="nav-links" aria-label="Main Navigation">
-      <a href="/menu" class="nav-link {% if request.path == '/menu' or request.path.startswith('/menu/') %}active{% endif %}">Menu</a>
-      <a href="/experience" class="nav-link {% if request.path == '/experience' %}active{% endif %}">Experience</a>
-      <a href="/about" class="nav-link {% if request.path == '/about' %}active{% endif %}">About</a>
-      <a href="/gallery" class="nav-link {% if request.path == '/gallery' %}active{% endif %}">Gallery</a>
-      <a href="/reservations" class="nav-link {% if request.path == '/reservations' %}active{% endif %}">Reservations</a>
-    </nav>
+      <!-- Desktop Navigation Links -->
+      <nav class="nav-links" aria-label="Main Navigation">
+        <a href="/menu" class="nav-link {% if request.path == '/menu' or request.path.startswith('/menu/') %}active{% endif %}">Menu</a>
+        <a href="/experience" class="nav-link {% if request.path == '/experience' %}active{% endif %}">Experience</a>
+        <a href="/about" class="nav-link {% if request.path == '/about' %}active{% endif %}">About</a>
+        <a href="/gallery" class="nav-link {% if request.path == '/gallery' %}active{% endif %}">Gallery</a>
+        <a href="/reservations" class="nav-link {% if request.path == '/reservations' %}active{% endif %}">Reservations</a>
+      </nav>
+    </div>
 
     <div class="nav-actions">
       <!-- Live Table Indicator (Desktop only, click opens Table Status) -->

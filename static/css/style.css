@@ -384,6 +384,14 @@ h1, h2, h3, h4, h5, h6,
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  gap: clamp(16px, 2.5vw, 36px);
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: clamp(28px, 3.5vw, 52px);
+  min-width: 0;
 }
 
 /* Brand Logo */
@@ -409,7 +417,7 @@ h1, h2, h3, h4, h5, h6,
 .nav-links {
   display: none;
   align-items: center;
-  gap: 32px;
+  gap: clamp(20px, 2.2vw, 32px);
 }
 
 @media (min-width: 900px) {
