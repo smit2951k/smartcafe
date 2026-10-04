@@ -1,0 +1,74 @@
+# =========================
+# Environment & Secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# Firebase Admin credentials
+*firebase-adminsdk*.json
+firebase-credentials.json
+serviceAccountKey.json
+
+# Razorpay secrets
+# Keep API secrets in .env / Vercel Environment Variables
+
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+venv/
+.venv/
+env/
+ENV/
+
+# Python testing
+.pytest_cache/
+.coverage
+coverage/
+
+
+# =========================
+# Local Development Data
+# =========================
+local_firestore.json
+
+
+# =========================
+# Node.js (if used by tools)
+# =========================
+node_modules/
+
+
+# =========================
+# Vercel
+# =========================
+.vercel/
+
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+
+
+# =========================
+# Logs
+# =========================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db

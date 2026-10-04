@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+
+{% block title %}Visual Archive & Sanctuary Moments — SmartCafe Bengaluru{% endblock %}
+
+{% block content %}
+<main style="padding-top: 140px; padding-bottom: 120px;">
+  <div class="container">
+    
+    <!-- Editorial Gallery Header -->
+    <div class="reveal" style="max-width: 780px; margin: 0 auto 56px; text-align: center;">
+      <span class="eyebrow" style="margin-bottom: 12px;">Visual Archive</span>
+      <h1 style="font-size: clamp(2.8rem, 5.5vw, 4.4rem); margin-bottom: 16px; line-height: 1.1;">
+        Moments in Frame & Light.
+      </h1>
+      <p style="font-family: var(--font-serif); font-size: 1.25rem; font-style: italic; color: var(--color-accent-bronze); margin-bottom: 16px;">
+        "Where morning steam meets terracotta tiles and Bengaluru sunlight."
+      </p>
+      <p class="lead" style="font-size: var(--text-base); margin: 0; max-width: 580px; margin-left: auto; margin-right: auto;">
+        A quiet photographic journal documenting our weekly micro-lot roasts, 48-hour sourdough loaves, and the patrons who inhabit our spaces.
+      </p>
+    </div>
+
+    <!-- Category Filter Tabs with Live Item Counts -->
+    <div class="reveal delay-1" style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 56px;">
+      <button type="button" onclick="filterGallery('all', this)" class="gallery-tab btn-pill btn-pill-primary btn-pill-sm">
+        <span>All Captures</span>
+        <span style="opacity: 0.65; font-size: 10px; margin-left: 2px;">(12)</span>
+      </button>
+      <button type="button" onclick="filterGallery('coffee', this)" class="gallery-tab btn-pill btn-pill-secondary btn-pill-sm">
+        <span>Roastery & Coffee</span>
+        <span style="opacity: 0.65; font-size: 10px; margin-left: 2px;">(4)</span>
+      </button>
+      <button type="button" onclick="filterGallery('food', this)" class="gallery-tab btn-pill btn-pill-secondary btn-pill-sm">
+        <span>Culinary & Plates</span>
+        <span style="opacity: 0.65; font-size: 10px; margin-left: 2px;">(4)</span>
+      </button>
+      <button type="button" onclick="filterGallery('spaces', this)" class="gallery-tab btn-pill btn-pill-secondary btn-pill-sm">
+        <span>Atmosphere & Light</span>
+        <span style="opacity: 0.65; font-size: 10px; margin-left: 2px;">(4)</span>
+      </button>
+    </div>
+
+    <!-- Asymmetric Editorial Gallery Grid -->
+    <div id="galleryGrid" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 24px; align-items: start;">
+      <style>
+        .gallery-card {
+          position: relative;
+          overflow: hidden;
+          border-radius: var(--radius-sm);
+          border: 1px solid var(--color-border);
+          background-color: var(--color-cream-muted);
+          cursor: pointer;
+        }
+        .gallery-card img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform var(--transition-slow);
+        }
+        .gallery-card:hover img {
+          transform: scale(1.05);
+        }
+        .gallery-card-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(to top, rgba(18, 17, 16, 0.75) 0%, transparent 60%);
+          display: flex;
+          flex-direction: column;
+          justify-content: flex-end;
+          padding: 20px;
+          opacity: 0;
+          transition: opacity var(--transition-smooth);
+        }
+        .gallery-card:hover .gallery-card-overlay {
+          opacity: 1;
+        }
+        @media (min-width: 768px) {
+          .col-span-8 { grid-column: span 8 !important; }
+          .col-span-4 { grid-column: span 4 !important; }
+          .col-span-6 { grid-column: span 6 !important; }
+          .col-span-12 { grid-column: span 12 !important; }
+        }
+      </style>
+
+      <!-- 1. Wide Solarium (8 Cols) -->
+      <div class="gallery-item col-span-8" data-category="spaces" style="grid-column: span 12;">
+        <div class="gallery-card" style="aspect-ratio: 16/10;" onclick="openLightbox(0)">
+          <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1400&q=80" alt="Courtyard Solarium Daylight" loading="lazy" />
+          <div class="gallery-card-overlay">
+            <span style="font-size: 10px; text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-accent-bronze); font-weight: 700;">Atmosphere &bull; 08:30 AM</span>
+            <strong style="color: var(--color-cream); font-family: var(--font-serif); font-size: 1.35rem; font-weight: 400;">Courtyard Solarium</strong>
+            <p style="color: var(--color-text-on-dark-muted); font-size: var(--text-xs); margin: 0;">Natural morning illumination through lush green glass canopy.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Vertical Espresso Pull (4 Cols) -->
+      <div class="gallery-item col-span-4" data-category="coffee" style="grid-column: span 12;">
+        <div class="gallery-card" style="aspect-ratio: 4/5;" onclick="openLightbox(1)">
+          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=1200&q=80" alt="Synesso Double Ristretto" loading="lazy" />
+          <div class="gallery-card-overlay">
+            <span style="font-size: 10px; text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-accent-bronze); font-weight: 700;">Coffee &bull; Chikmagalur Reserve</span>
+            <strong style="color: var(--color-cream); font-family: var(--font-serif); font-size: 1.25rem; font-weight: 400;">Synesso MVP Extraction</strong>
+            <p style="color: var(--color-text-on-dark-muted); font-size: var(--text-xs); margin: 0;">27-second double pull, 93.5°C brew head.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Square Sourdough Baker (6 Cols) -->
+      <div class="gallery-item col-span-6" data-category="food" style="grid-column: span 12;">
+        <div class="gallery-card" style="aspect-ratio: 1/1;" onclick="openLightbox(2)">
+          <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80" alt="48-Hour Country Sourdough" loading="lazy" />
+          <div class="gallery-card-overlay">
+            <span style="font-size: 10px; text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-accent-bronze); font-weight: 700;">Culinary &bull; 48h Ferment</span>
+            <strong style="color: var(--color-cream); font-family: var(--font-serif); font-size: 1.35rem; font-weight: 400;">Wild Sourdough Boules</strong>
+            <p style="color: var(--color-text-on-dark-muted); font-size: var(--text-xs); margin: 0;">Naturally leavened loaves with deep open crumb.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Square Library Reader (6 Cols) -->
+      <div class="gallery-item col-span-6" data-category="spaces" style="grid-column: span 12;">
+        <div class="gallery-card" style="aspect-ratio: 1/1;" onclick="openLightbox(3)">
+          <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80" alt="Architectural Library" loading="lazy" />
+          <div class="gallery-card-overlay">
+            <span style="font-size: 10px; text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-accent-bronze); font-weight: 700;">Spaces &bull; Deep Work</span>
+            <strong style="color: var(--color-cream); font-family: var(--font-serif); font-size: 1.35rem; font-weight: 400;">Architectural Library</strong>
+            <p style="color: var(--color-text-on-dark-muted); font-size: var(--text-xs); margin: 0;">Oak tables, soft acoustic timber & natural daylight.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Full-Width Editorial Quote Break -->
+      <div class="col-span-12" style="grid-column: span 12; padding: 48px 0; border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); margin: 24px 0; text-align: center;">
+        <span class="eyebrow" style="margin-bottom: 8px;">Sanctuary Manifesto</span>
+        <blockquote style="font-family: var(--font-serif); font-size: clamp(1.8rem, 3.5vw, 2.6rem); font-style: italic; color: var(--color-espresso); max-width: 820px; margin: 0 auto 12px; line-height: 1.3;">
+          "Coffee is not merely an extraction of beans; it is a permission to pause."
+        </blockquote>
+        <span style="font-size: var(--text-xs); color: var(--color-accent-bronze); text-transform: uppercase; letter-spacing: var(--tracking-wider); font-weight: 600;">SmartCafe Bengaluru</span>
+      </div>
+
+      <!-- 5. Vertical Pour Over Bloom (4 Cols) -->
+      <div class="gallery-item col-span-4" data-category="coffee" style="grid-column: span 12;">
+        <div class="gallery-card" style="aspect-ratio: 4/5;" onclick="openLightbox(4)">
+          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80" alt="V60 Pour Over Bloom" loading="lazy" />
+          <div class="gallery-card-overlay">
+            <span style="font-size: 10px; text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-accent-bronze); font-weight: 700;">Roastery &bull; V60 Method</span>
+            <strong style="color: var(--color-cream); font-family: var(--font-serif); font-size: 1.25rem; font-weight: 400;">Single-Estate Bloom</strong>
+            <p style="color: var(--color-text-on-dark-muted); font-size: var(--text-xs); margin: 0;">Highlighting bergamot, floral jasmine & raw honey.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. Wide Handmade Tagliatelle (8 Cols) -->
+      <div class="gallery-item col-span-8" data-category="food" style="grid-column: span 12;">
+        <div class="gallery-card" style="aspect-ratio: 16/10;" onclick="openLightbox(5)">
+          <img src="https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=1400&q=80" alt="Handmade Forest Mushroom Tagliatelle" loading="lazy" />
+          <div class="gallery-card-overlay">
+            <span style="font-size: 10px; text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-accent-bronze); font-weight: 700;">Culinary &bull; Hand-Rolled</span>
+            <strong style="color: var(--color-cream); font-family: var(--font-serif); font-size: 1.35rem; font-weight: 400;">Forest Mushroom Tagliatelle</strong>
+            <p style="color: var(--color-text-on-dark-muted); font-size: var(--text-xs); margin: 0;">Shiitake, porcini butter, thyme & aged pecorino.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7. Kyoto Drip Cold Tower (6 Cols) -->
+      <div class="gallery-item col-span-6" data-category="coffee" style="grid-column: span 12;">
+        <div class="gallery-card" style="aspect-ratio: 16/11;" onclick="openLightbox(6)">
+          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=1200&q=80" alt="Kyoto Slow Drip Cold Brew" loading="lazy" />
+          <div class="gallery-card-overlay">
+            <span style="font-size: 10px; text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-accent-bronze); font-weight: 700;">Coffee &bull; 14-Hour Cold Drip</span>
+            <strong style="color: var(--color-cream); font-family: var(--font-serif); font-size: 1.35rem; font-weight: 400;">Kyoto Tower Cold Brew</strong>
+            <p style="color: var(--color-text-on-dark-muted); font-size: var(--text-xs); margin: 0;">Extracted drop by drop over crystal clear ice.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 8. Truffle Scramble Croissant (6 Cols) -->
+      <div class="gallery-item col-span-6" data-category="food" style="grid-column: span 12;">
+        <div class="gallery-card" style="aspect-ratio: 16/11;" onclick="openLightbox(7)">
+          <img src="https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&w=1200&q=80" alt="Black Truffle Scramble Croissant" loading="lazy" />
+          <div class="gallery-card-overlay">
+            <span style="font-size: 10px; text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-accent-bronze); font-weight: 700;">Bakery &bull; Morning Plate</span>
+            <strong style="color: var(--color-cream); font-family: var(--font-serif); font-size: 1.35rem; font-weight: 400;">Truffle Scramble Croissant</strong>
+            <p style="color: var(--color-text-on-dark-muted); font-size: var(--text-xs); margin: 0;">Pasture eggs, French butter croissant & black truffle paste.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 9. Barista Bar Counter (4 Cols) -->
+      <div class="gallery-item col-span-4" data-category="coffee" style="grid-column: span 12;">
+        <div class="gallery-card" style="aspect-ratio: 4/5;" onclick="openLightbox(8)">
+          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1200&q=80" alt="The Barista Counter" loading="lazy" />
+          <div class="gallery-card-overlay">
+            <span style="font-size: 10px; text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-accent-bronze); font-weight: 700;">Coffee &bull; The Bar</span>
+            <strong style="color: var(--color-cream); font-family: var(--font-serif); font-size: 1.25rem; font-weight: 400;">Dial-in Station</strong>
+            <p style="color: var(--color-text-on-dark-muted); font-size: var(--text-xs); margin: 0;">Calibrated every 3 hours for changing humidity.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 10. Solarium Seating at Dusk (8 Cols) -->
+      <div class="gallery-item col-span-8" data-category="spaces" style="grid-column: span 12;">
+        <div class="gallery-card" style="aspect-ratio: 16/10;" onclick="openLightbox(9)">
+          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1400&q=80" alt="Evening Conversation in the Solarium" loading="lazy" />
+          <div class="gallery-card-overlay">
+            <span style="font-size: 10px; text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-accent-bronze); font-weight: 700;">Spaces &bull; Twilight</span>
+            <strong style="color: var(--color-cream); font-family: var(--font-serif); font-size: 1.35rem; font-weight: 400;">Evening Sanctuary</strong>
+            <p style="color: var(--color-text-on-dark-muted); font-size: var(--text-xs); margin: 0;">Warm lighting transitions as dusk falls over Bengaluru.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Booking CTA Banner -->
+    <div class="card-clean reveal" style="margin-top: 80px; padding: 48px; text-align: center; background-color: var(--color-espresso); color: var(--color-cream); border-color: var(--color-border-dark);">
+      <span class="eyebrow" style="color: var(--color-accent-bronze); margin-bottom: 8px;">Experience the Atmosphere</span>
+      <h2 style="font-size: clamp(2rem, 3.5vw, 2.8rem); margin-bottom: 12px; color: var(--color-cream);">
+        Reserve your preferred station today.
+      </h2>
+      <p style="font-size: var(--text-sm); color: var(--color-text-on-dark-muted); max-width: 520px; margin: 0 auto 28px;">
+        Whether you prefer the Solarium sunlight or the quiet library nooks, we hold your station with intention.
+      </p>
+      <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
+        <a href="/reservations" class="btn-pill btn-pill-light">
+          <span>Book a Table</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </a>
+        <a href="/menu" class="btn-pill btn-pill-outline-dark">
+          <span>Explore Offerings</span>
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Interactive Lightbox Modal with Prev/Next Navigation -->
+  <div id="galleryLightbox" style="position: fixed; inset: 0; background-color: rgba(18, 17, 16, 0.96); backdrop-filter: blur(8px); z-index: 1200; display: none; align-items: center; justify-content: center; padding: 24px;" onclick="closeLightbox()">
+    
+    <!-- Close button -->
+    <button type="button" onclick="closeLightbox()" style="position: absolute; top: 24px; right: 28px; color: var(--color-cream); cursor: pointer; z-index: 1210;" aria-label="Close Lightbox">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 28px; height: 28px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+
+    <!-- Prev button -->
+    <button type="button" onclick="event.stopPropagation(); navLightbox(-1)" style="position: absolute; left: 24px; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; border-radius: 50%; border: 1px solid rgba(249, 246, 240, 0.2); color: var(--color-cream); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1210;" aria-label="Previous Image">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+
+    <!-- Next button -->
+    <button type="button" onclick="event.stopPropagation(); navLightbox(1)" style="position: absolute; right: 24px; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; border-radius: 50%; border: 1px solid rgba(249, 246, 240, 0.2); color: var(--color-cream); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1210;" aria-label="Next Image">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+
+    <!-- Image & Caption Container -->
+    <div style="position: relative; max-width: 90vw; max-height: 85vh; text-align: center;" onclick="event.stopPropagation()">
+      <img id="lightboxImg" src="" alt="Gallery Image" style="max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: var(--radius-xs); box-shadow: var(--shadow-elevated);" />
+      <div style="margin-top: 16px;">
+        <span id="lightboxTag" style="font-size: 10.5px; text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-accent-bronze); font-weight: 700; display: block; margin-bottom: 2px;"></span>
+        <h4 id="lightboxTitle" style="font-family: var(--font-serif); font-size: 1.4rem; color: var(--color-cream); font-weight: 400; margin: 0 0 4px;"></h4>
+        <p id="lightboxDesc" style="font-size: var(--text-xs); color: var(--color-text-on-dark-muted); margin: 0;"></p>
+      </div>
+    </div>
+
+  </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const galleryItems = [
+    {
+      src: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1600&q=85",
+      tag: "Atmosphere • 08:30 AM",
+      title: "Courtyard Solarium",
+      desc: "Natural morning illumination through lush green glass canopy foliage."
+    },
+    {
+      src: "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=1600&q=85",
+      tag: "Coffee • Chikmagalur Reserve",
+      title: "Synesso MVP Extraction",
+      desc: "27-second double pull, 93.5°C brew head on custom saturated group."
+    },
+    {
+      src: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1600&q=85",
+      tag: "Culinary • 48h Ferment",
+      title: "Wild Sourdough Boules",
+      desc: "Naturally leavened loaves with deep open crumb and caramelized crust."
+    },
+    {
+      src: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=85",
+      tag: "Spaces • Deep Focus",
+      title: "Architectural Library",
+      desc: "Oak tables, soft acoustic timber & discreet charging stations."
+    },
+    {
+      src: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1600&q=85",
+      tag: "Roastery • V60 Method",
+      title: "Single-Estate Bloom",
+      desc: "Highlighting bergamot, floral jasmine & raw honey."
+    },
+    {
+      src: "https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=1600&q=85",
+      tag: "Culinary • Hand-Rolled",
+      title: "Forest Mushroom Tagliatelle",
+      desc: "Shiitake, porcini butter, thyme & 24-month aged pecorino."
+    },
+    {
+      src: "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=1600&q=85",
+      tag: "Coffee • 14-Hour Cold Drip",
+      title: "Kyoto Tower Cold Brew",
+      desc: "Extracted drop by drop over crystal clear ice."
+    },
+    {
+      src: "https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&w=1600&q=85",
+      tag: "Bakery • Morning Plate",
+      title: "Truffle Scramble Croissant",
+      desc: "Pasture eggs, French butter croissant & black truffle paste."
+    },
+    {
+      src: "https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1600&q=85",
+      tag: "Coffee • The Bar",
+      title: "Dial-in Station",
+      desc: "Calibrated every 3 hours for changing atmospheric humidity."
+    },
+    {
+      src: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1600&q=85",
+      tag: "Spaces • Twilight",
+      title: "Evening Sanctuary",
+      desc: "Warm lighting transitions as dusk falls over Bengaluru."
+    }
+  ];
+
+  let currentIdx = 0;
+
+  function openLightbox(index) {
+    currentIdx = index;
+    updateLightboxContent();
+    const box = document.getElementById("galleryLightbox");
+    box.style.display = "flex";
+    document.body.style.overflow = "hidden";
+  }
+
+  function updateLightboxContent() {
+    const item = galleryItems[currentIdx];
+    if (!item) return;
+    document.getElementById("lightboxImg").src = item.src;
+    document.getElementById("lightboxTag").textContent = item.tag;
+    document.getElementById("lightboxTitle").textContent = item.title;
+    document.getElementById("lightboxDesc").textContent = item.desc;
+  }
+
+  function navLightbox(direction) {
+    currentIdx = (currentIdx + direction + galleryItems.length) % galleryItems.length;
+    updateLightboxContent();
+  }
+
+  function closeLightbox() {
+    const box = document.getElementById("galleryLightbox");
+    box.style.display = "none";
+    document.body.style.overflow = "";
+  }
+
+  function filterGallery(category, btnEl) {
+    document.querySelectorAll(".gallery-tab").forEach(btn => {
+      btn.className = "gallery-tab btn-pill btn-pill-secondary btn-pill-sm";
+    });
+    btnEl.className = "gallery-tab btn-pill btn-pill-primary btn-pill-sm";
+
+    const items = document.querySelectorAll(".gallery-item");
+    items.forEach(item => {
+      const cat = item.getAttribute("data-category");
+      if (category === "all" || cat === category) {
+        item.style.display = "block";
+      } else {
+        item.style.display = "none";
+      }
+    });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeLightbox();
+    if (e.key === "ArrowLeft") navLightbox(-1);
+    if (e.key === "ArrowRight") navLightbox(1);
+  });
+</script>
+{% endblock %}

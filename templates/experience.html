@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}The Experience — SmartCafe Bengaluru{% endblock %}
+
+{% block content %}
+<main style="padding-top: 140px; padding-bottom: 120px;">
+  <div class="container">
+    
+    <!-- Editorial Experience Header -->
+    <div class="reveal" style="max-width: 720px; margin-bottom: 72px;">
+      <span class="eyebrow" style="margin-bottom: 12px;">Visual Narrative</span>
+      <h1 style="font-size: clamp(2.8rem, 5.5vw, 4.4rem); margin-bottom: 20px; line-height: 1.1;">
+        The Anatomy of a Smart Sanctuary.
+      </h1>
+      <p class="lead" style="font-size: var(--text-base); margin: 0;">
+        How we orchestrate acoustics, single-origin roasting, wild fermentation, and invisible table technology to shape your day.
+      </p>
+    </div>
+
+    <!-- Chapter 01: Coffee Extractions -->
+    <div class="reveal" style="display: grid; grid-template-columns: 1fr; gap: clamp(32px, 5vw, 64px); align-items: center; margin-bottom: 100px;">
+      <style>
+        @media (min-width: 992px) {
+          .exp-grid-1 { grid-template-columns: 1.2fr 0.8fr !important; }
+        }
+      </style>
+      <div class="exp-grid-1" style="display: grid; grid-template-columns: 1fr; gap: 48px; align-items: center;">
+        <div class="img-zoom-wrap" style="aspect-ratio: 16/10; border-radius: var(--radius-sm); border: 1px solid var(--color-border);">
+          <img
+            src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=1200&q=80"
+            alt="Synesso MVP Espresso Extraction"
+            loading="lazy"
+          />
+        </div>
+        <div>
+          <span class="eyebrow" style="margin-bottom: 8px;">Chapter 01</span>
+          <h2 style="font-size: 2.2rem; margin-bottom: 16px;">The Roastery & Calibration</h2>
+          <p style="font-size: var(--text-base); color: var(--color-text-secondary); line-height: 1.8; margin-bottom: 16px;">
+            Every morning at 06:45, our lead barista checks ambient barometric pressure and humidity in Indiranagar. Grinder burrs are calibrated in micro-steps to yield exact 1:2 extraction ratios in 27 seconds.
+          </p>
+          <p style="font-size: var(--text-sm); color: var(--color-text-muted); line-height: 1.6; margin: 0;">
+            No pre-ground coffee. Zero automated pod extractions. Pure origin expression.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chapter 02: The Culinary Kitchen -->
+    <div class="reveal" style="display: grid; grid-template-columns: 1fr; gap: clamp(32px, 5vw, 64px); align-items: center; margin-bottom: 100px;">
+      <style>
+        @media (min-width: 992px) {
+          .exp-grid-2 { grid-template-columns: 0.8fr 1.2fr !important; }
+        }
+      </style>
+      <div class="exp-grid-2" style="display: grid; grid-template-columns: 1fr; gap: 48px; align-items: center;">
+        <div style="order: 2;">
+          <div class="img-zoom-wrap" style="aspect-ratio: 16/10; border-radius: var(--radius-sm); border: 1px solid var(--color-border);">
+            <img
+              src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80"
+              alt="Artisan Sourdough & Kitchen Craft"
+              loading="lazy"
+            />
+          </div>
+        </div>
+        <div style="order: 1;">
+          <span class="eyebrow" style="margin-bottom: 8px;">Chapter 02</span>
+          <h2 style="font-size: 2.2rem; margin-bottom: 16px;">Slow Fermentation Kitchen</h2>
+          <p style="font-size: var(--text-base); color: var(--color-text-secondary); line-height: 1.8; margin-bottom: 16px;">
+            Our kitchen runs on seasonal rhythms. Sourdough boules ferment for 48 hours for deep flavor and easy digestion. Pastured eggs arrive daily from ethical local farms in Karnataka.
+          </p>
+          <p style="font-size: var(--text-sm); color: var(--color-text-muted); line-height: 1.6; margin: 0;">
+            Honest, clean culinary technique with zero artificial preservatives or frozen bases.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chapter 03: The Atmosphere & Light -->
+    <div class="reveal" style="display: grid; grid-template-columns: 1fr; gap: clamp(32px, 5vw, 64px); align-items: center; margin-bottom: 100px;">
+      <style>
+        @media (min-width: 992px) {
+          .exp-grid-3 { grid-template-columns: 1.2fr 0.8fr !important; }
+        }
+      </style>
+      <div class="exp-grid-3" style="display: grid; grid-template-columns: 1fr; gap: 48px; align-items: center;">
+        <div class="img-zoom-wrap" style="aspect-ratio: 16/10; border-radius: var(--radius-sm); border: 1px solid var(--color-border);">
+          <img
+            src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1200&q=80"
+            alt="Solarium Architecture & Daylight"
+            loading="lazy"
+          />
+        </div>
+        <div>
+          <span class="eyebrow" style="margin-bottom: 8px;">Chapter 03</span>
+          <h2 style="font-size: 2.2rem; margin-bottom: 16px;">Light, Timber & Acoustics</h2>
+          <p style="font-size: var(--text-base); color: var(--color-text-secondary); line-height: 1.8; margin-bottom: 16px;">
+            The Courtyard Solarium catches early morning sunlight filtered through canopy foliage. Oak tables are positioned to grant privacy, while ambient playlists never overpower conversation.
+          </p>
+          <p style="font-size: var(--text-sm); color: var(--color-text-muted); line-height: 1.6; margin: 0;">
+            Comfortable chairs engineered for extended mornings with a book or an afternoon focus session.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chapter 04: Invisible Technology -->
+    <div class="card-clean reveal" style="background-color: var(--color-espresso); color: var(--color-cream); border-color: var(--color-border-dark); padding: clamp(36px, 5vw, 64px);">
+      <div style="max-width: 720px;">
+        <span class="eyebrow" style="margin-bottom: 12px; color: var(--color-accent-bronze);">Chapter 04</span>
+        <h2 style="font-size: clamp(2.2rem, 4vw, 3.2rem); margin-bottom: 16px; color: var(--color-cream);">
+          Invisible Technology
+        </h2>
+        <p style="font-size: var(--text-base); color: var(--color-text-on-dark-muted); line-height: 1.8; margin-bottom: 24px;">
+          Technology is only elegant when you forget it exists. No noisy POS printers blaring next to your ear. No complex mobile application to install. Just a simple browser interface on your phone that recognizes your table and orchestrates kitchen tickets smoothly.
+        </p>
+        <a href="/menu" class="btn-pill btn-pill-light">
+          <span>Experience The Menu</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</main>
+{% endblock %}

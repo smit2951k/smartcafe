@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}About Our Sanctuary — SmartCafe Bengaluru{% endblock %}
+
+{% block content %}
+<main style="padding-top: 140px; padding-bottom: 120px;">
+  <div class="container container-narrow">
+    
+    <!-- Editorial Header -->
+    <div class="reveal" style="margin-bottom: 64px;">
+      <span class="eyebrow" style="margin-bottom: 12px;">Our Origin</span>
+      <h1 style="font-size: clamp(2.8rem, 5.5vw, 4.4rem); margin-bottom: 20px; line-height: 1.1;">
+        Why SmartCafe exists.
+      </h1>
+      <p class="lead" style="font-size: var(--text-base); margin: 0;">
+        A conscious retreat in the middle of Bengaluru's relentless pace, built around slow craftsmanship and quiet intelligence.
+      </p>
+    </div>
+
+    <!-- Editorial Photo -->
+    <div class="reveal delay-1" style="margin-bottom: 64px;">
+      <div class="img-zoom-wrap" style="aspect-ratio: 16/9; border-radius: var(--radius-sm); border: 1px solid var(--color-border);">
+        <img
+          src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1200&q=80"
+          alt="Coffee bar crafting"
+          loading="lazy"
+        />
+      </div>
+    </div>
+
+    <!-- The Human Story -->
+    <div class="reveal" style="display: flex; flex-direction: column; gap: 32px; font-size: var(--text-base); color: var(--color-text-secondary); line-height: 1.85;">
+      <div>
+        <h2 style="font-size: 2rem; color: var(--color-text-primary); margin-bottom: 12px;">What We Believe</h2>
+        <p>
+          Most contemporary hospitality has swung between two extremes: romantic cafes where service takes 40 minutes because of paper tickets, or hyper-optimized commercial counters where customers are treated like transaction barcodes.
+        </p>
+        <p>
+          We started SmartCafe to prove that hospitality doesn't have to choose between soul and speed. Great food requires slow patience; ordering and settling a bill should not.
+        </p>
+      </div>
+
+      <div style="border-top: 1px solid var(--color-border); padding-top: 32px;">
+        <h2 style="font-size: 2rem; color: var(--color-text-primary); margin-bottom: 12px;">Our Approach to Coffee</h2>
+        <p>
+          We source coffees exclusively from farms we have physically walked in Chikmagalur, Coorg, and Yilgacheffe. Every bean lot is cupped, profiled, and extracted on Synesso machinery with water mineralized to exactly 90 ppm.
+        </p>
+      </div>
+
+      <div style="border-top: 1px solid var(--color-border); padding-top: 32px;">
+        <h2 style="font-size: 2rem; color: var(--color-text-primary); margin-bottom: 12px;">Our Approach to Food</h2>
+        <p>
+          Simple, seasonal cooking that honors natural produce. We ferment our own sourdough starters, churn house butter, and compose plates that leave you energised rather than weighed down.
+        </p>
+      </div>
+
+      <div style="border-top: 1px solid var(--color-border); padding-top: 32px;">
+        <h2 style="font-size: 2rem; color: var(--color-text-primary); margin-bottom: 12px;">Our Approach to Technology</h2>
+        <p>
+          Technology is not our product; it is our invisible host. It remembers your dietary preferences, routes tickets directly to the barista's station display, and allows you to settle on your own schedule.
+        </p>
+      </div>
+
+      <!-- Invitation CTA -->
+      <div class="card-clean" style="margin-top: 24px; padding: 40px; text-align: center;">
+        <span class="eyebrow" style="margin-bottom: 8px;">Experience It In Person</span>
+        <h3 style="font-size: 1.8rem; margin-bottom: 16px;">We would love to host you.</h3>
+        <p style="font-size: var(--text-sm); color: var(--color-text-secondary); max-width: 480px; margin: 0 auto 24px;">
+          Find us on 12th Main Road in Indiranagar. Open seven days a week from early morning to late evening.
+        </p>
+        <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
+          <a href="/reservations" class="btn-pill btn-pill-primary">
+            <span>Book a Table</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </a>
+          <a href="/menu" class="btn-pill btn-pill-secondary">
+            <span>Explore Menu</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+{% endblock %}

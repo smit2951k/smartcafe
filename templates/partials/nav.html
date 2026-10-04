@@ -1,0 +1,145 @@
+{% if request.path == '/admin' or request.path.startswith('/admin') %}
+<!-- Admin Navigation Header -->
+<header id="adminNavbar" class="navbar nav-solid" style="background: #171716; border-bottom: 1px solid rgba(255,255,255,0.08);">
+  <div class="container nav-inner" style="justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <a href="/admin" class="nav-brand" style="color: #F5F1E8; letter-spacing: 0.12em;">
+        SMARTCAFE <span style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #A88A62; font-family: var(--font-sans); margin-left: 6px; font-weight: 700;">ADMIN</span>
+      </a>
+      <nav class="nav-links" style="display: flex; gap: 18px;">
+        <button type="button" onclick="setAdminSection('overview')" id="adminNavBtn-overview" class="nav-link admin-nav-link" style="background: none; border: none; cursor: pointer; color: #CBD5E1; font-size: var(--text-xs); font-weight: 600;">Overview</button>
+        <button type="button" onclick="setAdminSection('orders')" id="adminNavBtn-orders" class="nav-link admin-nav-link active" style="background: none; border: none; cursor: pointer; color: #CBD5E1; font-size: var(--text-xs); font-weight: 600;">Orders</button>
+        <button type="button" onclick="setAdminSection('reservations')" id="adminNavBtn-reservations" class="nav-link admin-nav-link" style="background: none; border: none; cursor: pointer; color: #CBD5E1; font-size: var(--text-xs); font-weight: 600;">Reservations</button>
+        <button type="button" onclick="setAdminSection('tables')" id="adminNavBtn-tables" class="nav-link admin-nav-link" style="background: none; border: none; cursor: pointer; color: #CBD5E1; font-size: var(--text-xs); font-weight: 600;">Tables</button>
+        <button type="button" onclick="setAdminSection('menu')" id="adminNavBtn-menu" class="nav-link admin-nav-link" style="background: none; border: none; cursor: pointer; color: #CBD5E1; font-size: var(--text-xs); font-weight: 600;">Menu</button>
+        <button type="button" onclick="setAdminSection('patrons')" id="adminNavBtn-patrons" class="nav-link admin-nav-link" style="background: none; border: none; cursor: pointer; color: #CBD5E1; font-size: var(--text-xs); font-weight: 600;">Customers</button>
+      </nav>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <a href="/" target="_blank" class="nav-link" style="color: #94A3B8; font-size: 11px; text-transform: uppercase; letter-spacing: var(--tracking-wider); text-decoration: none;">
+        View Customer Site &rarr;
+      </a>
+      <button type="button" onclick="adminLogout()" class="btn-pill btn-pill-sm" style="background: #20382F; color: #F5F1E8; border: 1px solid rgba(255,255,255,0.15); font-size: 11px; cursor: pointer;">
+        Sign Out
+      </button>
+    </div>
+  </div>
+</header>
+{% else %}
+<!-- Sticky Minimal Customer Navbar -->
+<header id="mainNavbar" class="navbar {% if request.path == '/' %}nav-transparent{% else %}nav-solid{% endif %}">
+  <div class="container nav-inner">
+    <!-- Brandmark -->
+    <a href="/" class="nav-brand" aria-label="SmartCafe Homepage">
+      SMARTCAFE
+    </a>
+
+    <!-- Desktop Navigation Links -->
+    <nav class="nav-links" aria-label="Main Navigation">
+      <a href="/menu" class="nav-link {% if request.path == '/menu' or request.path.startswith('/menu/') %}active{% endif %}">Menu</a>
+      <a href="/experience" class="nav-link {% if request.path == '/experience' %}active{% endif %}">Experience</a>
+      <a href="/about" class="nav-link {% if request.path == '/about' %}active{% endif %}">About</a>
+      <a href="/gallery" class="nav-link {% if request.path == '/gallery' %}active{% endif %}">Gallery</a>
+      <a href="/reservations" class="nav-link {% if request.path == '/reservations' %}active{% endif %}">Reservations</a>
+    </nav>
+
+    <div class="nav-actions">
+      <!-- Live Table Indicator (Desktop only, click opens Table Status) -->
+      <a href="javascript:void(0)" onclick="openTableStatusModal()" class="status-chip status-chip-live desktop-only-inline" id="navTableBadgeLink" title="Table Status">
+        <span id="activeTableBadge">● TABLE {% if session.get('table_id') or session.get('table_number') %}{{ session.get('table_id') or session.get('table_number') }}{% else %}—{% endif %}</span>
+      </a>
+
+      <!-- Quick Scan Table QR (Desktop) -->
+      <button type="button" onclick="openTableScanner()" class="nav-scan-btn desktop-only-inline" id="navScanTableBtn" title="Scan Table QR" aria-label="Scan Table QR">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+          <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+          <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+          <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+          <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+          <rect x="7" y="7" width="10" height="10" rx="1"></rect>
+        </svg>
+        <span>Scan QR</span>
+      </button>
+
+      <!-- Profile Dropdown (Shown when logged in on desktop) -->
+      <div class="nav-profile-wrap desktop-only-inline {% if not session.get('customer') %}hidden{% endif %}" id="navProfileWrap">
+        <button
+          type="button"
+          id="navProfileBtn"
+          onclick="toggleProfileDropdown()"
+          class="nav-profile-btn"
+          aria-expanded="false"
+          aria-haspopup="true"
+          aria-label="Patron Profile Navigation"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width: 15px; height: 15px;">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span id="navProfileLabel">Profile</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+
+        <!-- Profile Dropdown Menu -->
+        <div id="navProfileDropdown" class="profile-dropdown-menu" role="menu" aria-label="Profile Menu">
+          <div class="dropdown-header">
+            <span id="dropdownUserName" class="dropdown-user-name">{{ session.customer.name if session.get('customer') else 'Patron' }}</span>
+            <span id="dropdownUserEmail" class="dropdown-user-email">{{ session.customer.email if session.get('customer') else '' }}</span>
+          </div>
+          <a href="/account?tab=profile" class="profile-dropdown-item" role="menuitem" onclick="toggleProfileDropdown(false)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <span>Profile</span>
+          </a>
+          <a href="/account?tab=orders" class="profile-dropdown-item" role="menuitem" onclick="toggleProfileDropdown(false)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+            <span>Orders</span>
+          </a>
+          <a href="/account?tab=reservations" class="profile-dropdown-item" role="menuitem" onclick="toggleProfileDropdown(false)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <span>Reservations</span>
+          </a>
+          <a href="/account?tab=favorites" class="profile-dropdown-item" role="menuitem" onclick="toggleProfileDropdown(false)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+            <span>Saved Items</span>
+          </a>
+          <div class="dropdown-divider"></div>
+          <button type="button" onclick="logoutCustomer()" class="profile-dropdown-item dropdown-logout-btn" role="menuitem">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            <span>Sign Out</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Sign In Button (Shown when not logged in on desktop) -->
+      <a href="/login?next={{ request.path }}" class="nav-link desktop-only-inline {% if session.get('customer') %}hidden{% endif %}" id="navSignInLink" style="display: inline-flex; align-items: center; gap: 6px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width: 15px; height: 15px;">
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+          <polyline points="10 17 15 12 10 7"></polyline>
+          <line x1="15" y1="12" x2="3" y2="12"></line>
+        </svg>
+        <span>Sign In</span>
+      </a>
+
+      <!-- Order Tray Trigger (Compact on mobile) -->
+      <a href="/cart" class="nav-tray-btn" id="navTrayTrigger" aria-label="Open Order Tray">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width: 15px; height: 15px;">
+          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <path d="M16 10a4 4 0 0 1-8 0"></path>
+        </svg>
+        <span class="nav-tray-label">Tray</span>
+        <span id="cartCountBadge" class="nav-tray-badge">0</span>
+      </a>
+
+      <!-- Mobile Hamburger Toggle -->
+      <button type="button" onclick="toggleMobileNav(true)" class="nav-toggle-btn" aria-label="Open navigation menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
+          <line x1="4" y1="7" x2="20" y2="7"></line>
+          <line x1="4" y1="17" x2="20" y2="17"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+{% endif %}

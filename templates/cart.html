@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Your Order Tray — SmartCafe Bengaluru{% endblock %}
+
+{% block content %}
+<main style="padding-top: 140px; padding-bottom: 120px; background-color: var(--color-ivory); min-height: 85vh;">
+  <div class="container container-narrow">
+    
+    <!-- Editorial Header -->
+    <div class="reveal" style="display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 24px; border-bottom: 1px solid var(--color-border); margin-bottom: 36px; flex-wrap: wrap; gap: 16px;">
+      <div>
+        <span class="eyebrow" style="margin-bottom: 8px; color: var(--color-accent-bronze); text-transform: uppercase; font-size: var(--text-xs); letter-spacing: 0.16em; font-weight: 600; display: block;">Table Dispatch</span>
+        <h1 style="font-family: var(--font-serif); font-size: clamp(2.4rem, 4vw, 3.4rem); margin: 0; color: var(--color-charcoal); font-weight: 400; line-height: 1.1;">Your Tray</h1>
+      </div>
+      <a href="/menu" class="btn-pill btn-pill-secondary btn-pill-sm" style="text-decoration: none; padding: 10px 20px;">
+        <span>+ Add More Offerings</span>
+      </a>
+    </div>
+
+    <div id="fullCartContent" style="display: flex; flex-direction: column; gap: 32px;">
+      <!-- Tray Items Container -->
+      <div id="fullCartItems" class="card-clean" style="padding: 32px; background-color: var(--color-white); border: 1px solid var(--color-border);">
+        <!-- Dynamically rendered via JS -->
+      </div>
+
+      <!-- Financial Breakdown Card -->
+      <div id="fullCartSummaryCard" class="card-clean" style="padding: 32px; background-color: var(--color-white); border: 1px solid var(--color-border);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 16px; margin-bottom: 20px;">
+          <span style="font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-wider); font-weight: 600; color: var(--color-charcoal);">
+            Settlement Summary
+          </span>
+          <span style="font-size: 11px; color: var(--color-olive);">Handcrafted at Table</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; font-size: var(--text-sm); margin-bottom: 24px;">
+          <div style="display: flex; justify-content: space-between; color: var(--color-olive);">
+            <span>Subtotal</span>
+            <span id="fullCartSubtotal" style="font-weight: 600; color: var(--color-charcoal);">₹0</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; color: var(--color-olive);">
+            <span>Goods & Services Tax (GST 5%)</span>
+            <span id="fullCartTax" style="font-weight: 500; color: var(--color-charcoal);">₹0</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--color-border); padding-top: 16px; margin-top: 4px;">
+            <span style="font-weight: 600; text-transform: uppercase; font-size: var(--text-xs); letter-spacing: var(--tracking-wider); color: var(--color-charcoal);">Total Amount</span>
+            <div style="text-align: right;">
+              <span style="font-size: 10px; color: var(--color-accent-bronze); letter-spacing: var(--tracking-wider); text-transform: uppercase; margin-right: 4px;">INR</span>
+              <span id="fullCartTotal" style="font-family: var(--font-serif); font-size: 2rem; font-weight: 600; color: var(--color-charcoal);">₹0</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <a href="/checkout" class="btn-pill btn-pill-primary" style="width: 100%; text-decoration: none; justify-content: center; padding: 16px 24px;">
+            <span>Proceed to Table Settlement</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function renderFullCart() {
+    const cart = (typeof getLocalCart === "function") ? getLocalCart() : (JSON.parse(localStorage.getItem("smartcafe_cart") || "[]"));
+    const container = document.getElementById("fullCartItems");
+    const summaryCard = document.getElementById("fullCartSummaryCard");
+    if (!container) return;
+
+    if (!cart || cart.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 64px 20px;">
+          <div style="width: 48px; height: 48px; border-radius: 50%; background-color: var(--color-ivory); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: var(--color-olive);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width: 22px; height: 22px;"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+          </div>
+          <h3 style="font-family: var(--font-serif); font-size: 1.8rem; margin-bottom: 8px; color: var(--color-charcoal); font-weight: 400;">Nothing here yet.</h3>
+          <p style="font-size: var(--text-sm); color: var(--color-olive); margin-bottom: 28px;">Start with something worth ordering.</p>
+          <a href="/menu" class="btn-pill btn-pill-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; text-decoration: none;">
+            <span>Explore Menu &rarr;</span>
+          </a>
+        </div>
+      `;
+      if (summaryCard) summaryCard.style.display = "none";
+      return;
+    }
+
+    if (summaryCard) summaryCard.style.display = "block";
+    container.innerHTML = "";
+    let subtotal = 0;
+
+    cart.forEach(item => {
+      const itemPrice = item.price + (item.extra_price || 0);
+      const lineTotal = itemPrice * item.quantity;
+      subtotal += lineTotal;
+
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.justifyContent = "space-between";
+      row.style.alignItems = "center";
+      row.style.padding = "20px 0";
+      row.style.borderBottom = "1px solid var(--color-border)";
+      row.style.flexWrap = "wrap";
+      row.style.gap = "16px";
+
+      row.innerHTML = `
+        <div style="display: flex; gap: 16px; align-items: center;">
+          <img src="${item.image || 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=400&q=80'}" alt="${item.name}" style="width: 58px; height: 58px; border-radius: var(--radius-xs); object-fit: cover; background: var(--color-ivory); border: 1px solid var(--color-border);" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=400&q=80';" />
+          <div>
+            <h4 style="font-family: var(--font-serif); font-size: 1.25rem; margin: 0 0 4px; font-weight: 500; color: var(--color-charcoal);">${item.name}</h4>
+            <span style="font-size: var(--text-xs); color: var(--color-olive);">
+              ₹${itemPrice} each
+            </span>
+            ${item.selected_options && item.selected_options.length ? `<span style="font-size: 11px; color: var(--color-olive); display: block;">${item.selected_options.map(o => o.optionName || o.name).join(", ")}</span>` : ''}
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 20px;">
+          <!-- Quantity Stepper − 1 + -->
+          <div class="qty-stepper" style="display: inline-flex; align-items: center; border: 1px solid var(--color-border); border-radius: var(--radius-full); padding: 3px 8px; background-color: var(--color-ivory);">
+            <button type="button" onclick="updateCartQuantity('${item.cart_id}', -1)" class="qty-btn" aria-label="Decrease quantity" style="width: 26px; height: 26px; border: none; background: none; font-size: 18px; cursor: pointer; color: var(--color-charcoal); display: flex; align-items: center; justify-content: center;">&minus;</button>
+            <span class="qty-val" style="min-width: 26px; text-align: center; font-size: var(--text-sm); font-weight: 600; color: var(--color-charcoal);">${item.quantity}</span>
+            <button type="button" onclick="updateCartQuantity('${item.cart_id}', 1)" class="qty-btn" aria-label="Increase quantity" style="width: 26px; height: 26px; border: none; background: none; font-size: 18px; cursor: pointer; color: var(--color-charcoal); display: flex; align-items: center; justify-content: center;">&#43;</button>
+          </div>
+
+          <span style="font-family: var(--font-serif); font-size: 1.2rem; font-weight: 600; min-width: 65px; text-align: right; color: var(--color-charcoal);">
+            ₹${lineTotal}
+          </span>
+
+          <!-- Subtle Remove Button -->
+          <button type="button" onclick="removeCartItem('${item.cart_id}')" style="background: none; border: none; font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-olive); cursor: pointer; padding: 6px 8px; font-weight: 500; transition: color var(--transition-fast);" onmouseover="this.style.color='#991B1B'" onmouseout="this.style.color='var(--color-olive)'">
+            Remove
+          </button>
+        </div>
+      `;
+      container.appendChild(row);
+    });
+
+    const tax = Math.round(subtotal * 0.05);
+    const total = subtotal + tax;
+
+    document.getElementById("fullCartSubtotal").textContent = "₹" + subtotal;
+    document.getElementById("fullCartTax").textContent = "₹" + tax;
+    document.getElementById("fullCartTotal").textContent = "₹" + total;
+  }
+
+  document.addEventListener("DOMContentLoaded", renderFullCart);
+  window.addEventListener("cartUpdated", renderFullCart);
+</script>
+{% endblock %}

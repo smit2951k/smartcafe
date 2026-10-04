@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}{{ item.name }} — SmartCafe{% endblock %}
+
+{% block content %}
+<main style="padding-top: 140px; padding-bottom: 120px;">
+  <div class="container">
+    
+    <!-- Breadcrumb -->
+    <nav aria-label="Breadcrumb" style="display: flex; align-items: center; gap: 8px; font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-wider); margin-bottom: 36px; color: var(--color-text-secondary);">
+      <a href="/menu" class="link-underline">Menu</a>
+      <span style="color: var(--color-border);">&bull;</span>
+      <span style="color: var(--color-accent-bronze); font-weight: 600;">{{ item.category }}</span>
+      <span style="color: var(--color-border);">&bull;</span>
+      <span style="color: var(--color-text-primary); font-weight: 600;">{{ item.name }}</span>
+    </nav>
+
+    <!-- Product Detail Composition (Asymmetric 2-column) -->
+    <div style="display: grid; grid-template-columns: 1fr; gap: clamp(36px, 6vw, 72px); align-items: start;">
+      <style>
+        @media (min-width: 992px) {
+          .detail-split {
+            grid-template-columns: 1.1fr 0.9fr !important;
+          }
+        }
+      </style>
+      <div class="detail-split" style="display: grid; grid-template-columns: 1fr; gap: 48px; align-items: start;">
+        
+        <!-- Left: Large Image & Extraction Notes -->
+        <div class="reveal">
+          <div class="img-zoom-wrap" style="aspect-ratio: 4/3; width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-sm); margin-bottom: 24px;">
+            <img
+              src="{{ item.image }}"
+              alt="{{ item.name }}"
+              onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=1200&q=80';"
+            />
+            {% if item.is_featured %}
+            <span style="position: absolute; top: 16px; left: 16px; background-color: var(--color-espresso); color: var(--color-cream); font-size: 10px; font-weight: 700; letter-spacing: var(--tracking-wider); text-transform: uppercase; padding: 4px 12px; border-radius: var(--radius-full);">
+              Signature Offering
+            </span>
+            {% endif %}
+          </div>
+
+          {% if item.notes %}
+          <div class="card-clean" style="padding: 20px 24px; border-left: 3px solid var(--color-accent-bronze);">
+            <span class="eyebrow" style="margin-bottom: 6px;">Barista & Kitchen Calibration</span>
+            <p style="font-size: var(--text-xs); color: var(--color-text-secondary); margin: 0; line-height: 1.6;">
+              {{ item.notes }}
+            </p>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Right: Information & Customization -->
+        <div class="reveal delay-1">
+          <span class="eyebrow" style="margin-bottom: 8px;">{{ item.category }} • SmartCafe Bengaluru</span>
+          <h1 style="font-size: clamp(2.4rem, 4vw, 3.4rem); margin-bottom: 12px; font-weight: 400; line-height: 1.15;">
+            {{ item.name }}
+          </h1>
+
+          {% if item.tagline %}
+          <p style="font-family: var(--font-serif); font-size: 1.25rem; font-style: italic; color: var(--color-accent-bronze); margin-bottom: 16px;">
+            "{{ item.tagline }}"
+          </p>
+          {% endif %}
+
+          <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--color-border);">
+            <span id="unitPriceDisplay" style="font-family: var(--font-serif); font-size: 2.2rem; font-weight: 600; color: var(--color-espresso);">
+              ₹{{ item.price }}
+            </span>
+            <span style="font-size: var(--text-xs); color: var(--color-text-muted);">Taxes & Table Service Included</span>
+          </div>
+
+          <p style="font-size: var(--text-base); color: var(--color-text-secondary); line-height: 1.75; margin-bottom: 24px;">
+            {{ item.description }}
+          </p>
+
+          {% if item.ingredients %}
+          <div style="background-color: var(--color-white); border: 1px solid var(--color-border); border-radius: var(--radius-xs); padding: 14px 18px; margin-bottom: 32px;">
+            <span style="font-size: 10.5px; text-transform: uppercase; letter-spacing: var(--tracking-wider); font-weight: 700; color: var(--color-accent-bronze); display: block; margin-bottom: 4px;">
+              Curated Ingredients
+            </span>
+            <p style="font-size: var(--text-xs); color: var(--color-text-primary); margin: 0;">
+              {{ item.ingredients|join(" &bull; ") }}
+            </p>
+          </div>
+          {% endif %}
+
+          <!-- Options & Customizer -->
+          <div style="border-top: 1px solid var(--color-border); padding-top: 24px; margin-bottom: 32px;">
+            <span class="eyebrow" style="margin-bottom: 16px;">Customization & Preference</span>
+
+            {% if item.options %}
+              {% for opt_group in item.options %}
+              <div style="margin-bottom: 20px;">
+                <label style="font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-wider); font-weight: 600; color: var(--color-text-primary); display: block; margin-bottom: 8px;">
+                  {{ opt_group.name }}
+                </label>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+                  {% for choice in opt_group.choices %}
+                  <button
+                    type="button"
+                    onclick="selectOption('{{ opt_group.name }}', '{{ choice.label }}', {{ choice.price }}, this)"
+                    class="option-btn"
+                    data-group="{{ opt_group.name }}"
+                    data-label="{{ choice.label }}"
+                    data-price="{{ choice.price }}"
+                    style="background-color: {% if loop.first %}var(--color-espresso){% else %}var(--color-white){% endif %}; color: {% if loop.first %}var(--color-cream){% else %}var(--color-text-primary){% endif %}; border: 1px solid {% if loop.first %}var(--color-espresso){% else %}var(--color-border){% endif %}; padding: 12px 14px; border-radius: var(--radius-xs); text-align: left; font-size: var(--text-xs); display: flex; justify-content: space-between; align-items: center; transition: all var(--transition-fast);"
+                  >
+                    <span>{{ choice.label }}</span>
+                    {% if choice.price > 0 %}
+                    <span style="font-weight: 600; color: var(--color-accent-bronze);">+₹{{ choice.price }}</span>
+                    {% endif %}
+                  </button>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div style="margin-bottom: 20px;">
+                <label style="font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-wider); font-weight: 600; color: var(--color-text-primary); display: block; margin-bottom: 8px;">
+                  Serving Temperature
+                </label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <button
+                    type="button"
+                    onclick="selectOption('Serving Style', 'Standard Table Service', 0, this)"
+                    class="option-btn"
+                    data-group="Serving Style"
+                    data-label="Standard Table Service"
+                    data-price="0"
+                    style="background-color: var(--color-espresso); color: var(--color-cream); border: 1px solid var(--color-espresso); padding: 12px 14px; border-radius: var(--radius-xs); text-align: left; font-size: var(--text-xs);"
+                  >
+                    <span>Standard Barista Pull</span>
+                  </button>
+                  <button
+                    type="button"
+                    onclick="selectOption('Serving Style', 'Extra Hot Service', 0, this)"
+                    class="option-btn"
+                    data-group="Serving Style"
+                    data-label="Extra Hot Service"
+                    data-price="0"
+                    style="background-color: var(--color-white); color: var(--color-text-primary); border: 1px solid var(--color-border); padding: 12px 14px; border-radius: var(--radius-xs); text-align: left; font-size: var(--text-xs);"
+                  >
+                    <span>Extra Hot (68°C)</span>
+                  </button>
+                </div>
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Quantity Stepper & Add Button -->
+          <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+            <div class="qty-stepper" style="padding: 4px;">
+              <button type="button" onclick="changeQty(-1)" class="qty-btn" aria-label="Decrease">&minus;</button>
+              <span id="qtyDisplay" class="qty-val">1</span>
+              <button type="button" onclick="changeQty(1)" class="qty-btn" aria-label="Increase">&#43;</button>
+            </div>
+
+            <button
+              type="button"
+              onclick="handleAddDetailToTray()"
+              id="addToTrayBtn"
+              class="btn-pill btn-pill-primary"
+              style="flex: 1; padding: 16px 28px; justify-content: center;"
+            >
+              <span id="btnLabel">Add to Tray &bull; ₹{{ item.price }}</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <p style="font-size: 11px; color: var(--color-text-muted); margin-top: 14px;">
+            Order will be prepared at the espresso bar or kitchen and brought directly to your table.
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Related Pairings -->
+    {% if related_items %}
+    <div style="margin-top: 96px; padding-top: 48px; border-top: 1px solid var(--color-border);">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 36px;">
+        <div>
+          <span class="eyebrow" style="margin-bottom: 6px;">Harmonious Pairings</span>
+          <h2 style="font-size: 2rem; margin: 0;">You May Also Appreciate</h2>
+        </div>
+        <a href="/menu" class="link-underline" style="font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-wider); font-weight: 600;">
+          All Menu Offerings &rarr;
+        </a>
+      </div>
+
+      <div class="bento-grid">
+        {% for rel in related_items %}
+        <div class="bento-col-4">
+          {% with item=rel %}
+            {% include "partials/menu_card.html" %}
+          {% endwith %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const basePrice = {{ item.price }};
+  const itemId = "{{ item.id }}";
+  const itemSlug = "{{ item.slug or item.id }}";
+  const itemName = {{ item.name|tojson }};
+  const itemCategory = "{{ item.category }}";
+  const itemImage = "{{ item.image }}";
+
+  let currentQty = 1;
+  let selectedOptions = {};
+
+  function changeQty(delta) {
+    currentQty = Math.max(1, currentQty + delta);
+    document.getElementById("qtyDisplay").textContent = currentQty;
+    updateDynamicPrice();
+  }
+
+  function selectOption(groupName, label, price, btnEl) {
+    selectedOptions[groupName] = { optionName: label, price: parseFloat(price) };
+    
+    // Toggle active state in group
+    const parentContainer = btnEl.parentElement;
+    parentContainer.querySelectorAll(".option-btn").forEach(b => {
+      b.style.backgroundColor = "var(--color-white)";
+      b.style.color = "var(--color-text-primary)";
+      b.style.borderColor = "var(--color-border)";
+    });
+
+    btnEl.style.backgroundColor = "var(--color-espresso)";
+    btnEl.style.color = "var(--color-cream)";
+    btnEl.style.borderColor = "var(--color-espresso)";
+
+    updateDynamicPrice();
+  }
+
+  function updateDynamicPrice() {
+    let extra = 0;
+    for (const key in selectedOptions) {
+      extra += selectedOptions[key].price || 0;
+    }
+    const singlePrice = basePrice + extra;
+    const totalPrice = singlePrice * currentQty;
+
+    document.getElementById("unitPriceDisplay").textContent = "₹" + singlePrice;
+    document.getElementById("btnLabel").textContent = "Add to Tray • ₹" + totalPrice;
+  }
+
+  function handleAddDetailToTray() {
+    const optsArray = [];
+    for (const group in selectedOptions) {
+      optsArray.push({
+        group: group,
+        optionName: selectedOptions[group].optionName,
+        price: selectedOptions[group].price
+      });
+    }
+
+    addToCart({
+      id: itemId,
+      slug: itemSlug,
+      name: itemName,
+      price: basePrice,
+      image: itemImage,
+      category: itemCategory
+    }, currentQty, optsArray);
+
+    if (typeof showToast === "function") {
+      showToast("Tray Updated", `${currentQty}x ${itemName} added.`);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    // Select first options by default
+    document.querySelectorAll(".option-btn").forEach(btn => {
+      if (btn.style.backgroundColor === "var(--color-espresso)") {
+        const group = btn.getAttribute("data-group");
+        const label = btn.getAttribute("data-label");
+        const price = btn.getAttribute("data-price");
+        if (group && label) {
+          selectedOptions[group] = { optionName: label, price: parseFloat(price) || 0 };
+        }
+      }
+    });
+    updateDynamicPrice();
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Scan Table QR — SmartCafe Bengaluru{% endblock %}
+
+{% block content %}
+<main style="background-color: #171716; color: var(--color-cream); min-height: 90vh; display: flex; align-items: center; justify-content: center; padding: 120px 20px 80px;">
+  <div style="width: 100%; max-width: 480px; text-align: center; margin: 0 auto;">
+    
+    <!-- Top Editorial Header -->
+    <div style="margin-bottom: 24px;">
+      <span style="font-family: var(--font-serif); font-size: 1.25rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-accent-bronze); display: block; margin-bottom: 8px;">
+        SMARTCAFE
+      </span>
+      <h1 style="font-family: var(--font-serif); font-size: clamp(2.2rem, 5vw, 3rem); margin: 0 0 10px; color: var(--color-cream); font-weight: 400; line-height: 1.15;">
+        Scan your table QR
+      </h1>
+      <p id="pageScannerStatus" style="font-size: var(--text-sm); color: var(--color-text-on-dark-muted); line-height: 1.5; margin: 0 auto; max-width: 320px;">
+        Point your camera at the QR code on your SmartCafe table.
+      </p>
+    </div>
+
+    <!-- Camera Viewport Box -->
+    <div class="scanner-viewport-container" style="max-width: 320px; aspect-ratio: 1/1; margin: 0 auto 24px; position: relative;">
+      <!-- Camera feed attaches here -->
+      <div id="pageScannerViewport" class="scanner-video-feed"></div>
+
+      <!-- Viewfinder Overlay with Bronze Corners -->
+      <div id="pageScannerViewfinder" class="scanner-viewfinder-overlay">
+        <div class="scanner-corner corner-tl"></div>
+        <div class="scanner-corner corner-tr"></div>
+        <div class="scanner-corner corner-bl"></div>
+        <div class="scanner-corner corner-br"></div>
+        <div class="scanner-scan-beam"></div>
+      </div>
+
+      <!-- Success Confirmation Card -->
+      <div id="pageScannerSuccess" class="scanner-success-card hidden">
+        <div class="scanner-success-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 26px; height: 26px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
+        <span id="pageScannerSuccessNumber" class="scanner-success-title">TABLE 03 DETECTED</span>
+        <p class="scanner-success-sub">Directing to Tasting Menu...</p>
+      </div>
+
+      <!-- Error & Fallback Box -->
+      <div id="pageScannerError" class="scanner-error-card hidden">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width: 32px; height: 32px; color: #E5A93C; margin-bottom: 12px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        <p id="pageScannerErrorText" class="scanner-error-text">Camera access is required to scan your table QR.</p>
+        <div style="display: flex; gap: 10px; margin-top: 16px;">
+          <button type="button" onclick="startDedicatedScanner()" class="btn-pill btn-pill-primary" style="padding: 10px 20px; font-size: 12px;">
+            <span>TRY AGAIN</span>
+          </button>
+          <a href="/menu" class="btn-pill btn-pill-secondary" style="padding: 10px 20px; font-size: 12px; color: #FFF; border-color: rgba(255,255,255,0.2); text-decoration: none;">
+            <span>CANCEL</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Prompt Helper & Cancel CTA -->
+    <div>
+      <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--color-text-on-dark-muted); margin: 0 0 20px;">
+        Table QR should be inside the frame.
+      </p>
+
+      <div style="display: flex; justify-content: center; gap: 14px;">
+        <a href="/menu" class="btn-pill btn-pill-secondary scanner-cancel-btn" style="text-decoration: none;">
+          <span>CANCEL</span>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  let dedicatedScanner = null;
+  let pageIsProcessing = false;
+
+  async function startDedicatedScanner() {
+    const errorBox = document.getElementById("pageScannerError");
+    const errorText = document.getElementById("pageScannerErrorText");
+    const viewfinder = document.getElementById("pageScannerViewfinder");
+    const statusEl = document.getElementById("pageScannerStatus");
+
+    if (errorBox) errorBox.classList.add("hidden");
+    if (viewfinder) viewfinder.classList.remove("hidden");
+    pageIsProcessing = false;
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (errorBox && errorText) {
+        errorText.textContent = "Camera isn't available on this device.";
+        errorBox.classList.remove("hidden");
+      }
+      if (viewfinder) viewfinder.classList.add("hidden");
+      return;
+    }
+
+    if (typeof Html5Qrcode === "undefined") {
+      setTimeout(startDedicatedScanner, 300);
+      return;
+    }
+
+    try {
+      if (dedicatedScanner) {
+        try { await dedicatedScanner.stop(); dedicatedScanner.clear(); } catch(e){}
+      }
+
+      dedicatedScanner = new Html5Qrcode("pageScannerViewport");
+      const boxSize = Math.min(260, Math.floor(window.innerWidth * 0.72));
+
+      await dedicatedScanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 15,
+          qrbox: { width: boxSize, height: boxSize },
+          aspectRatio: 1.0,
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+        },
+        async (decodedText) => {
+          if (pageIsProcessing) return;
+
+          const tableId = extractTableId(decodedText);
+          if (!tableId) {
+            if (statusEl) {
+              statusEl.textContent = "This QR code isn't a SmartCafe table QR.";
+              statusEl.style.color = "#FCD34D";
+              setTimeout(() => {
+                if (!pageIsProcessing && statusEl) {
+                  statusEl.textContent = "Point your camera at the QR code on your SmartCafe table.";
+                  statusEl.style.color = "";
+                }
+              }, 3000);
+            }
+            return;
+          }
+
+          pageIsProcessing = true;
+          try { await dedicatedScanner.stop(); dedicatedScanner.clear(); } catch(e){}
+
+          if (statusEl) {
+            statusEl.textContent = "Validating Table...";
+            statusEl.style.color = "";
+          }
+
+          try {
+            const res = await fetch(`/api/table/validate/${encodeURIComponent(tableId)}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" }
+            });
+            const data = await res.json();
+            if (data.success) {
+              const tableNum = data.table_number || data.table_id;
+              if (typeof setGlobalTable === "function") {
+                setGlobalTable(tableNum);
+              } else {
+                localStorage.setItem("smartcafe_table", tableNum);
+              }
+
+              const successBox = document.getElementById("pageScannerSuccess");
+              const successNum = document.getElementById("pageScannerSuccessNumber");
+              if (viewfinder) viewfinder.classList.add("hidden");
+              if (successNum) successNum.textContent = `TABLE ${tableNum} DETECTED`;
+              if (successBox) successBox.classList.remove("hidden");
+              if (statusEl) statusEl.textContent = `Table ${tableNum} detected.`;
+
+              setTimeout(() => {
+                window.location.href = "/menu";
+              }, 1200);
+            } else {
+              if (errorBox && errorText) {
+                errorText.textContent = data.error || "Table not found.";
+                errorBox.classList.remove("hidden");
+              }
+              if (viewfinder) viewfinder.classList.add("hidden");
+              pageIsProcessing = false;
+            }
+          } catch(err) {
+            if (errorBox && errorText) {
+              errorText.textContent = "Table not found. Please try again.";
+              errorBox.classList.remove("hidden");
+            }
+            if (viewfinder) viewfinder.classList.add("hidden");
+            pageIsProcessing = false;
+          }
+        },
+        () => {}
+      );
+    } catch(err) {
+      const errStr = (err && (err.name || err.message || "")).toString().toLowerCase();
+      if (errorBox && errorText) {
+        if (errStr.includes("notallowed") || errStr.includes("permission") || errStr.includes("denied")) {
+          errorText.textContent = "Camera access is required to scan your table QR.";
+        } else if (errStr.includes("notfound") || errStr.includes("device") || errStr.includes("notreadable")) {
+          errorText.textContent = "Camera isn't available on this device.";
+        } else {
+          errorText.textContent = "Camera access is required to scan your table QR.";
+        }
+        errorBox.classList.remove("hidden");
+      }
+      if (viewfinder) viewfinder.classList.add("hidden");
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    // Start camera when page loads
+    startDedicatedScanner();
+  });
+
+  window.addEventListener("beforeunload", () => {
+    if (dedicatedScanner) {
+      try { dedicatedScanner.stop(); } catch(e){}
+    }
+  });
+</script>
+{% endblock %}

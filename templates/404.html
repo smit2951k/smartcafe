@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}404 — Page Not Found | SmartCafe{% endblock %}
+
+{% block content %}
+<main class="min-h-[80vh] flex items-center justify-center px-6 py-32 bg-warm-ivory">
+  <div class="max-w-md w-full text-center space-y-6">
+    <div class="w-16 h-16 rounded-full bg-deep-forest/10 text-deep-forest flex items-center justify-center mx-auto">
+      <i data-lucide="coffee" class="w-8 h-8 stroke-[1.5]"></i>
+    </div>
+
+    <div class="space-y-2">
+      <span class="text-[11px] font-sans tracking-[0.25em] uppercase text-deep-forest font-semibold block">
+        404 / Missing Note
+      </span>
+      <h1 class="font-serif text-4xl sm:text-5xl text-charcoal">
+        Lost in the Roast
+      </h1>
+      <p class="text-xs sm:text-sm font-sans font-light text-muted-gray leading-relaxed">
+        {{ message or "The culinary page or table order you are looking for has been moved or does not exist." }}
+      </p>
+    </div>
+
+    <div class="pt-4 flex flex-col sm:flex-row gap-3 justify-center">
+      <a href="/menu">
+        <button class="px-6 py-3 bg-deep-forest text-warm-ivory text-xs uppercase tracking-widest font-sans rounded hover:bg-deep-forest/90 transition-colors shadow-xs cursor-pointer">
+          Explore Menu
+        </button>
+      </a>
+      <a href="/">
+        <button class="px-6 py-3 border border-warm-sand/80 text-charcoal text-xs uppercase tracking-widest font-sans rounded hover:bg-warm-sand/20 transition-colors cursor-pointer">
+          Return Home
+        </button>
+      </a>
+    </div>
+  </div>
+</main>
+{% endblock %}

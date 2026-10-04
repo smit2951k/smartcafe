@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Order #{{ order.id }} Status — SmartCafe{% endblock %}
+
+{% block content %}
+<main style="padding-top: 140px; padding-bottom: 120px;">
+  <div class="container container-narrow">
+
+    <!-- Navigation Back -->
+    <a href="/menu" class="link-underline" style="display: inline-flex; align-items: center; gap: 8px; font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-wider); font-weight: 600; margin-bottom: 32px; color: var(--color-text-secondary);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+      <span>Return to Seasonal Offerings</span>
+    </a>
+
+    <!-- Order Ticket Container -->
+    <div class="card-clean" style="padding: 40px;">
+      
+      <!-- Ticket Header -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--color-border); padding-bottom: 24px; margin-bottom: 32px; flex-wrap: wrap; gap: 20px;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <span class="status-chip status-chip-live">Live Kitchen Feed</span>
+          </div>
+          <h1 style="font-size: clamp(2rem, 3.5vw, 2.8rem); margin: 0 0 6px;">
+            Order #{{ order.id }}
+          </h1>
+          <p style="font-size: var(--text-sm); color: var(--color-text-secondary); margin: 0;">
+            Station: <strong style="color: var(--color-text-primary);">Table {{ order.table_number }}</strong> &bull; {{ order.customer_name or 'Patron' }}
+          </p>
+        </div>
+
+        <div style="text-align: right;">
+          <span style="font-size: 10.5px; text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-text-muted); display: block; margin-bottom: 2px;">
+            Settlement Verified
+          </span>
+          <div style="font-family: var(--font-serif); font-size: 2rem; font-weight: 600; color: var(--color-espresso);">
+            ₹{{ order.total }}
+          </div>
+          <span style="font-size: var(--text-xs); color: var(--color-accent-bronze);">
+            Method: {{ order.payment_method or 'UPI' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Progression Timeline -->
+      {% set status_map = { 'PENDING': 0, 'CONFIRMED': 0, 'PREPARING': 1, 'READY': 2, 'COMPLETED': 3, 'CANCELLED': -1 } %}
+      {% set current_idx = status_map.get(order.status, 0) %}
+
+      <div style="padding: 16px 0 36px; border-bottom: 1px solid var(--color-border); margin-bottom: 32px;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; text-align: center;">
+          
+          <!-- Step 1 -->
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            <div id="stepCircle-0" style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--text-xs); font-weight: 700; transition: all var(--transition-fast); {% if current_idx >= 0 %}background-color: var(--color-espresso); color: var(--color-cream);{% else %}background-color: var(--color-cream-muted); color: var(--color-text-muted);{% endif %} {% if current_idx == 0 %}box-shadow: 0 0 0 4px var(--color-cream-muted);{% endif %}">
+              1
+            </div>
+            <div>
+              <h4 id="stepLabel-0" style="font-size: var(--text-sm); margin: 0; font-weight: {% if current_idx == 0 %}700{% elif current_idx > 0 %}600{% else %}400{% endif %}; color: {% if current_idx >= 0 %}var(--color-text-primary){% else %}var(--color-text-muted){% endif %};">
+                Received
+              </h4>
+              <span style="font-size: 10px; color: var(--color-text-muted);">Station Printed</span>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            <div id="stepCircle-1" style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--text-xs); font-weight: 700; transition: all var(--transition-fast); {% if current_idx >= 1 %}background-color: var(--color-espresso); color: var(--color-cream);{% else %}background-color: var(--color-cream-muted); color: var(--color-text-muted);{% endif %} {% if current_idx == 1 %}box-shadow: 0 0 0 4px var(--color-cream-muted);{% endif %}">
+              2
+            </div>
+            <div>
+              <h4 id="stepLabel-1" style="font-size: var(--text-sm); margin: 0; font-weight: {% if current_idx == 1 %}700{% elif current_idx > 1 %}600{% else %}400{% endif %}; color: {% if current_idx >= 1 %}var(--color-text-primary){% else %}var(--color-text-muted){% endif %};">
+                Brewing
+              </h4>
+              <span style="font-size: 10px; color: var(--color-text-muted);">Kitchen Prep</span>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            <div id="stepCircle-2" style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--text-xs); font-weight: 700; transition: all var(--transition-fast); {% if current_idx >= 2 %}background-color: var(--color-espresso); color: var(--color-cream);{% else %}background-color: var(--color-cream-muted); color: var(--color-text-muted);{% endif %} {% if current_idx == 2 %}box-shadow: 0 0 0 4px var(--color-cream-muted);{% endif %}">
+              3
+            </div>
+            <div>
+              <h4 id="stepLabel-2" style="font-size: var(--text-sm); margin: 0; font-weight: {% if current_idx == 2 %}700{% elif current_idx > 2 %}600{% else %}400{% endif %}; color: {% if current_idx >= 2 %}var(--color-text-primary){% else %}var(--color-text-muted){% endif %};">
+                Plated & Ready
+              </h4>
+              <span style="font-size: 10px; color: var(--color-text-muted);">Runner Dispatch</span>
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            <div id="stepCircle-3" style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--text-xs); font-weight: 700; transition: all var(--transition-fast); {% if current_idx >= 3 %}background-color: var(--color-espresso); color: var(--color-cream);{% else %}background-color: var(--color-cream-muted); color: var(--color-text-muted);{% endif %} {% if current_idx == 3 %}box-shadow: 0 0 0 4px var(--color-cream-muted);{% endif %}">
+              4
+            </div>
+            <div>
+              <h4 id="stepLabel-3" style="font-size: var(--text-sm); margin: 0; font-weight: {% if current_idx == 3 %}700{% else %}400{% endif %}; color: {% if current_idx >= 3 %}var(--color-text-primary){% else %}var(--color-text-muted){% endif %};">
+                Served
+              </h4>
+              <span style="font-size: 10px; color: var(--color-text-muted);">Table Arrival</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Current Status Phase -->
+      <div style="background-color: var(--color-cream-surface); border: 1px solid var(--color-border); padding: 18px 24px; border-radius: var(--radius-xs); display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+        <div>
+          <span style="font-size: 10.5px; text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-text-secondary); font-weight: 600; display: block; margin-bottom: 2px;">
+            Current Phase
+          </span>
+          <span id="currentStatusText" style="font-family: var(--font-serif); font-size: 1.25rem; font-weight: 500; color: var(--color-espresso);">
+            Status: {{ order.status }}
+          </span>
+        </div>
+        <span class="status-chip status-chip-live">Live Feed</span>
+      </div>
+
+      <!-- Itemized Offerings -->
+      <div style="margin-bottom: 28px;">
+        <span class="eyebrow" style="margin-bottom: 14px;">Dispatched Items</span>
+
+        <div style="border-top: 1px solid var(--color-border);">
+          {% for item in order['items'] %}
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--color-border);">
+            <div>
+              <span style="font-size: var(--text-sm); font-weight: 600; color: var(--color-text-primary); display: block;">
+                {{ item.quantity }}&times; {{ item.name }}
+              </span>
+              {% if item.selected_options %}
+              <span style="font-size: var(--text-xs); color: var(--color-text-muted);">
+                {% for opt in item.selected_options %}
+                {{ opt.optionName or opt.label or opt.name }}{% if not loop.last %} &bull; {% endif %}
+                {% endfor %}
+              </span>
+              {% endif %}
+            </div>
+            <span style="font-family: var(--font-serif); font-size: 1.05rem; font-weight: 500;">
+              ₹{{ item.item_total }}
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div style="padding-top: 16px; display: flex; justify-content: space-between; font-size: var(--text-xs); color: var(--color-text-secondary);">
+          <span>Subtotal: ₹{{ order.subtotal }} &bull; GST (5%): ₹{{ order.tax }}</span>
+          <strong style="color: var(--color-text-primary);">Settled: ₹{{ order.total }}</strong>
+        </div>
+      </div>
+
+      <!-- Floor Service Notice -->
+      <div style="background-color: var(--color-white); border: 1px solid var(--color-border); padding: 14px 18px; border-radius: var(--radius-xs); display: flex; justify-content: space-between; align-items: center; font-size: var(--text-xs); color: var(--color-text-secondary);">
+        <span>Need acoustic adjustments or fresh mineral water? Our floor runners are stationed nearby.</span>
+        <strong style="color: var(--color-espresso);">Station Table {{ order.table_number }}</strong>
+      </div>
+
+    </div>
+
+  </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const orderId = "{{ order.id }}";
+  let lastStatus = "{{ order.status }}";
+
+  const statusIdx = {
+    'PENDING': 0,
+    'CONFIRMED': 0,
+    'PREPARING': 1,
+    'READY': 2,
+    'COMPLETED': 3,
+    'CANCELLED': -1
+  };
+
+  async function checkLiveOrderStatus() {
+    try {
+      const res = await fetch("/api/orders/" + orderId);
+      const data = await res.json();
+      if (data.success && data.order) {
+        const newStatus = data.order.status;
+        if (newStatus !== lastStatus) {
+          lastStatus = newStatus;
+          updateTimeline(newStatus);
+          showToast("Status Updated", "Order #" + orderId + " is now " + newStatus);
+        }
+      }
+    } catch (err) {
+      console.warn("Polling error:", err);
+    }
+  }
+
+  function updateTimeline(status) {
+    const curIdx = statusIdx[status] ?? 0;
+    document.getElementById("currentStatusText").textContent = "Status: " + status;
+
+    for (let i = 0; i < 4; i++) {
+      const circle = document.getElementById("stepCircle-" + i);
+      const label = document.getElementById("stepLabel-" + i);
+      if (!circle || !label) continue;
+
+      if (i === curIdx) {
+        circle.style.backgroundColor = "var(--color-espresso)";
+        circle.style.color = "var(--color-cream)";
+        circle.style.boxShadow = "0 0 0 4px var(--color-cream-muted)";
+        label.style.fontWeight = "700";
+        label.style.color = "var(--color-text-primary)";
+      } else if (i < curIdx) {
+        circle.style.backgroundColor = "var(--color-espresso)";
+        circle.style.color = "var(--color-cream)";
+        circle.style.boxShadow = "none";
+        label.style.fontWeight = "600";
+        label.style.color = "var(--color-text-primary)";
+      } else {
+        circle.style.backgroundColor = "var(--color-cream-muted)";
+        circle.style.color = "var(--color-text-muted)";
+        circle.style.boxShadow = "none";
+        label.style.fontWeight = "400";
+        label.style.color = "var(--color-text-muted)";
+      }
+    }
+  }
+
+  setInterval(checkLiveOrderStatus, 4000);
+</script>
+{% endblock %}

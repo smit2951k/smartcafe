@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}SmartCafe — Where Great Food Meets Smart Living{% endblock %}</title>
+  <meta name="description" content="SmartCafe combines boutique artisanal café culture, comfortable hospitality, and invisible smart ordering in Bengaluru." />
+
+  <!-- Google Fonts: Cormorant Garamond (Editorial Serif) & Inter (Clean UI Sans) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Design Tokens & Main Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+
+  <!-- Razorpay Checkout -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <!-- Lucide fallback compatibility -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- Navigation Partial -->
+  {% include "partials/nav.html" %}
+
+  <!-- Main Content Block -->
+  {% block content %}{% endblock %}
+
+  <!-- Footer Partial -->
+  {% include "partials/footer.html" %}
+
+  <!-- Customer Only: Drawer, Mobile Menu, Table & Scanner Modals -->
+  {% if not (request.path == '/admin' or request.path.startswith('/admin')) %}
+  <!-- Slide-Over Order Tray Drawer -->
+  <div id="cartBackdrop" class="drawer-backdrop hidden" onclick="toggleCartDrawer(false)"></div>
+  <aside id="cartDrawer" class="tray-drawer translate-x-full" aria-label="Current Order Tray">
+    <!-- Drawer Header -->
+    <div class="tray-header">
+      <div>
+        <span class="eyebrow" style="margin-bottom: 2px;">Floor Dispatch</span>
+        <h3 style="font-family: var(--font-serif); font-size: 1.45rem; margin: 0;">Your Order Tray</h3>
+      </div>
+      <button type="button" onclick="toggleCartDrawer(false)" aria-label="Close tray" style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background-color: var(--color-cream-muted);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Table Destination Display (Established via Physical QR Scan) -->
+    <div style="padding: 14px 28px; background-color: var(--color-cream-surface); border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between;">
+      <span style="font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-wider); font-weight: 600; color: var(--color-text-secondary);">
+        Dining Station:
+      </span>
+      <span id="drawerTableDisplay" style="font-size: var(--text-xs); font-weight: 700; color: var(--color-text-primary); letter-spacing: 0.03em;">
+        {% if session.get('table_id') or session.get('table_number') %}Table {{ session.get('table_id') or session.get('table_number') }}{% else %}Scan QR to Assign{% endif %}
+      </span>
+    </div>
+
+    <!-- Drawer Items List -->
+    <div id="drawerItemsList" class="tray-body">
+      <!-- Items dynamically populated via cart.js -->
+    </div>
+
+    <!-- Drawer Footer & Settlement Summary -->
+    <div class="tray-footer">
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: var(--text-sm);">
+        <div style="display: flex; justify-content: space-between; color: var(--color-text-secondary);">
+          <span>Subtotal</span>
+          <span id="drawerSubtotal" style="font-weight: 500; color: var(--color-text-primary);">₹0</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; color: var(--color-text-secondary);">
+          <span>GST (5%)</span>
+          <span id="drawerTax" style="font-weight: 500; color: var(--color-text-primary);">₹0</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--color-border); padding-top: 12px; margin-top: 4px;">
+          <span style="font-weight: 600; text-transform: uppercase; font-size: var(--text-xs); letter-spacing: var(--tracking-wider);">Estimated Total</span>
+          <span id="drawerTotal" style="font-family: var(--font-serif); font-size: 1.6rem; font-weight: 600; color: var(--color-espresso);">₹0</span>
+        </div>
+      </div>
+
+      <a href="/checkout" id="drawerCheckoutBtn" class="btn-pill btn-pill-primary" style="width: 100%; text-decoration: none;">
+        <span>Proceed to Settlement</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </a>
+
+      <p style="font-size: 11px; text-align: center; color: var(--color-text-muted); margin: 0;">
+        Tickets print at kitchen & bar immediately upon confirmation
+      </p>
+    </div>
+  </aside>
+
+  <!-- Fullscreen Mobile Navigation -->
+  <div id="mobileNavMenu" class="mobile-nav-overlay">
+    <div class="mobile-nav-header">
+      <span style="font-family: var(--font-serif); font-size: 1.4rem; letter-spacing: 0.12em; text-transform: uppercase;">
+        SMARTCAFE
+      </span>
+      <button type="button" onclick="toggleMobileNav(false)" aria-label="Close navigation menu" style="width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--color-border-dark); color: var(--color-cream); display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Mobile Dining Station & QR Scan Card -->
+    <div class="mobile-nav-station-bar" style="background: rgba(245, 241, 232, 0.06); border: 1px solid rgba(245, 241, 232, 0.12); border-radius: var(--radius-xs); padding: 14px 18px; margin: 16px 0; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <span style="font-size: 10px; text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-accent-bronze); display: block; font-weight: 600;">Current Table</span>
+        <strong class="live-table-label" style="font-family: var(--font-serif); font-size: 1.15rem; color: var(--color-cream);">
+          ● TABLE {% if session.get('table_id') or session.get('table_number') %}{{ session.get('table_id') or session.get('table_number') }}{% else %}—{% endif %}
+        </strong>
+      </div>
+      <button type="button" id="mobileScanTableBtn" onclick="toggleMobileNav(false); openTableScanner();" class="btn-pill btn-pill-sm" style="background: var(--color-accent-bronze); color: #FFF; border: none; font-size: 11px; padding: 7px 14px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 13px; height: 13px;"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path><rect x="7" y="7" width="10" height="10" rx="1"></rect></svg>
+        <span>Scan QR</span>
+      </button>
+    </div>
+
+    <ul class="mobile-nav-list">
+      <li class="mobile-nav-item"><a href="/" onclick="toggleMobileNav(false)">Home</a></li>
+      <li class="mobile-nav-item"><a href="/menu" onclick="toggleMobileNav(false)">Menu</a></li>
+      <li class="mobile-nav-item"><a href="/experience" onclick="toggleMobileNav(false)">Experience</a></li>
+      <li class="mobile-nav-item"><a href="/about" onclick="toggleMobileNav(false)">About</a></li>
+      <li class="mobile-nav-item"><a href="/gallery" onclick="toggleMobileNav(false)">Gallery</a></li>
+      <li class="mobile-nav-item"><a href="/reservations" onclick="toggleMobileNav(false)">Reservations</a></li>
+      <li class="mobile-nav-item"><a href="/cart" onclick="toggleMobileNav(false)">Tray (<span id="mobileMenuTrayBadge">0</span>)</a></li>
+      {% if session.get('customer') %}
+      <li class="mobile-nav-item"><a href="/account?tab=profile" onclick="toggleMobileNav(false)">Profile</a></li>
+      <li class="mobile-nav-item"><a href="/account?tab=orders" onclick="toggleMobileNav(false)">Orders</a></li>
+      <li class="mobile-nav-item"><a href="javascript:void(0)" onclick="toggleMobileNav(false); logoutCustomer();" style="color: #F87171; font-size: 1.15rem; margin-top: 8px;">Sign Out</a></li>
+      {% else %}
+      <li class="mobile-nav-item"><a href="/login" onclick="toggleMobileNav(false)">Profile / Sign In</a></li>
+      {% endif %}
+    </ul>
+
+    <div class="mobile-nav-footer">
+      <div>12th Main Road, Indiranagar, Bengaluru</div>
+      <div>Open Daily: 07:30 – 23:00</div>
+    </div>
+  </div>
+
+  <!-- Table Status Modal -->
+  <div id="tableStatusModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeTableStatusModal()">
+    <div class="table-status-modal-card" role="dialog" aria-modal="true" aria-labelledby="tableStatusHeading">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+        <span class="eyebrow" style="margin: 0; font-size: 11px;">Dining Session</span>
+        <button type="button" onclick="closeTableStatusModal()" class="modal-close-btn" aria-label="Close Table Status">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <h3 id="tableStatusHeading" style="font-family: var(--font-serif); font-size: 1.85rem; margin: 0 0 6px; color: var(--color-charcoal); font-weight: 400;">Table Status</h3>
+      <p style="font-size: var(--text-xs); color: var(--color-text-secondary); margin: 0 0 20px; line-height: 1.5;">
+        Current seated dining station for floor order dispatch.
+      </p>
+
+      <div style="background-color: var(--color-cream-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xs); padding: 18px 20px; margin-bottom: 22px; text-align: center;">
+        <span style="font-size: 10px; text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-text-muted); display: block; margin-bottom: 4px;">Current Station</span>
+        <strong id="tableStatusModalCurrent" style="font-family: var(--font-serif); font-size: 1.65rem; color: var(--color-accent-bronze); display: block; font-weight: 500;">
+          {% if session.get('table_id') or session.get('table_number') %}TABLE {{ session.get('table_id') or session.get('table_number') }}{% else %}No Table Active{% endif %}
+        </strong>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button type="button" onclick="triggerScanFromTableStatus()" class="btn-pill btn-pill-primary" style="width: 100%; justify-content: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 15px; height: 15px;">
+            <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+            <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+            <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+            <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+            <rect x="7" y="7" width="10" height="10" rx="1"></rect>
+          </svg>
+          <span>SCAN TABLE QR</span>
+        </button>
+
+        <button type="button" id="tableStatusChangeBtn" onclick="triggerScanFromTableStatus()" class="btn-pill btn-pill-secondary" style="width: 100%; justify-content: center;">
+          <span>CHANGE TABLE</span>
+        </button>
+
+        <button type="button" onclick="closeTableStatusModal()" class="btn-pill btn-pill-secondary" style="width: 100%; justify-content: center; border: none; font-size: var(--text-xs);">
+          <span>CANCEL</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dedicated Camera QR Scanner Modal -->
+  <div id="cameraScannerModal" class="camera-scanner-modal hidden" role="dialog" aria-modal="true" aria-labelledby="scannerModalHeading">
+    <div class="scanner-inner-wrap">
+      
+      <!-- Scanner Top Bar -->
+      <div class="scanner-top-bar">
+        <span class="scanner-brand">SMARTCAFE</span>
+        <button type="button" onclick="closeTableScanner()" class="scanner-close-btn" aria-label="Close Scanner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Scanner Header Titles -->
+      <div class="scanner-header-text">
+        <h2 id="scannerModalHeading" class="scanner-title">Scan your table QR</h2>
+        <p id="scannerStatusMessage" class="scanner-status-text">
+          Point your camera at the QR code on your SmartCafe table.
+        </p>
+      </div>
+
+      <!-- Viewport & Camera Stream Box -->
+      <div class="scanner-viewport-container">
+        <!-- Html5Qrcode video feed attaches here -->
+        <div id="scannerVideoViewport" class="scanner-video-feed"></div>
+
+        <!-- Minimal Viewfinder Overlay with Bronze Corners -->
+        <div id="scannerViewfinder" class="scanner-viewfinder-overlay">
+          <div class="scanner-corner corner-tl"></div>
+          <div class="scanner-corner corner-tr"></div>
+          <div class="scanner-corner corner-bl"></div>
+          <div class="scanner-corner corner-br"></div>
+          <div class="scanner-scan-beam"></div>
+        </div>
+
+        <!-- Success Confirmation Card -->
+        <div id="scannerSuccessCard" class="scanner-success-card hidden">
+          <div class="scanner-success-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 26px; height: 26px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <span id="scannerSuccessNumber" class="scanner-success-title">TABLE 03 DETECTED</span>
+          <p class="scanner-success-sub">Directing to Tasting Menu...</p>
+        </div>
+
+        <!-- Error & Fallback Box -->
+        <div id="scannerErrorNotice" class="scanner-error-card hidden">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width: 32px; height: 32px; color: #E5A93C; margin-bottom: 12px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          <p id="scannerErrorText" class="scanner-error-text">Camera access is required to scan your table QR.</p>
+          <div style="display: flex; gap: 10px; margin-top: 16px;">
+            <button type="button" id="scannerRetryBtn" onclick="startCameraScanner('scannerVideoViewport')" class="btn-pill btn-pill-primary" style="padding: 10px 20px; font-size: 12px;">
+              <span>TRY AGAIN</span>
+            </button>
+            <button type="button" onclick="closeTableScanner()" class="btn-pill btn-pill-secondary" style="padding: 10px 20px; font-size: 12px; color: #FFF; border-color: rgba(255,255,255,0.2);">
+              <span>CANCEL</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scanner Instructions & Cancel -->
+      <div class="scanner-bottom-bar">
+        <p class="scanner-helper-hint">Table QR should be inside the frame.</p>
+        <button type="button" onclick="closeTableScanner()" class="btn-pill btn-pill-secondary scanner-cancel-btn">
+          <span>CANCEL</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Global Toast Notification -->
+  <div class="toast-container">
+    <div id="globalToast" class="toast">
+      <div id="toastIconWrap" class="toast-icon"></div>
+      <div>
+        <span id="toastTitle" class="toast-title">Notification</span>
+        <span id="toastMessage" class="toast-message">Message details</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global JavaScript via url_for -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/cart.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/html5-qrcode.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/qr_scanner.js') }}"></script>
+
+  {% block extra_scripts %}{% endblock %}
+
+</body>
+</html>

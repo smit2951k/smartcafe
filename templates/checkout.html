@@ -1,0 +1,550 @@
+{% extends "base.html" %}
+
+{% block title %}Checkout & Table Settlement — SmartCafe{% endblock %}
+
+{% block content %}
+<main style="padding-top: 140px; padding-bottom: 120px;">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <a href="/menu" class="link-underline" style="display: inline-flex; align-items: center; gap: 8px; font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-wider); font-weight: 600; margin-bottom: 32px; color: var(--color-text-secondary);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+      <span>Return to Seasonal Offerings</span>
+    </a>
+
+    <!-- Header Section -->
+    <div class="reveal" style="margin-bottom: 48px; border-bottom: 1px solid var(--color-border); padding-bottom: 32px;">
+      <span class="eyebrow" style="margin-bottom: 10px;">Table Settlement</span>
+      <h1 style="font-size: clamp(2.4rem, 4vw, 3.4rem); margin-bottom: 12px;">
+        Confirm & Dispatch Tray
+      </h1>
+      <p class="lead" style="margin: 0; font-size: var(--text-base); max-width: 600px;">
+        Verify your dining station, guest details, and settle seamlessly via Razorpay UPI or physically at the espresso bar.
+      </p>
+    </div>
+
+    <!-- Empty cart warning -->
+    <div id="checkoutEmptyWarning" class="card-clean hidden" style="text-align: center; padding: 64px 32px; max-width: 480px; margin: 0 auto 60px;">
+      <div style="width: 52px; height: 52px; border-radius: 50%; background-color: var(--color-cream-muted); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: var(--color-accent-bronze);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width: 22px; height: 22px;"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+      </div>
+      <h2 style="font-size: 1.8rem; margin-bottom: 10px;">Your tray is empty</h2>
+      <p style="font-size: var(--text-sm); color: var(--color-text-secondary); margin-bottom: 24px;">
+        You haven't selected any coffees or dishes yet.
+      </p>
+      <a href="/menu" class="btn-pill btn-pill-primary">
+        <span>Explore The Menu</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </a>
+    </div>
+
+    <!-- Main Checkout Grid -->
+    <div id="checkoutMainContainer" style="display: grid; grid-template-columns: 1fr; gap: clamp(32px, 5vw, 64px); align-items: start;">
+      <style>
+        @media (min-width: 992px) {
+          #checkoutMainContainer {
+            grid-template-columns: 1.35fr 1fr !important;
+          }
+        }
+      </style>
+
+      <!-- Left Column: Form Steps -->
+      <div style="display: flex; flex-direction: column; gap: 32px;">
+        
+        <!-- 01. Guest Identification -->
+        <div class="card-clean">
+          <div style="margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-wider); font-weight: 700; color: var(--color-text-primary);">
+              01. Guest Identification
+            </span>
+            {% if session.get('customer') and session.customer.get('email') %}
+            <span class="status-chip status-chip-live">Recognized Patron</span>
+            {% endif %}
+          </div>
+
+          {% if not (session.get('customer') and session.customer.get('email')) %}
+          <div style="background-color: var(--color-cream-surface); border: 1px dashed var(--color-accent-bronze); padding: 18px 20px; border-radius: var(--radius-xs); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+            <div>
+              <span style="font-size: var(--text-xs); font-weight: 700; color: var(--color-espresso); display: block; margin-bottom: 2px;">Sign in to continue</span>
+              <span style="font-size: 11px; color: var(--color-text-secondary);">Authentication is required before your table order can be dispatched.</span>
+            </div>
+            <a href="/login?next=/checkout" class="btn-pill btn-pill-primary btn-pill-sm" style="text-decoration: none;">
+              <span>Sign In to Continue &rarr;</span>
+            </a>
+          </div>
+          {% endif %}
+
+          <div style="display: grid; grid-template-columns: 1fr; gap: 18px;">
+            <style>
+              @media (min-width: 600px) {
+                .checkout-row-2 {
+                  grid-template-columns: 1fr 1fr !important;
+                }
+              }
+            </style>
+            <div class="checkout-row-2" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+              <div class="form-group">
+                <label for="checkoutName" class="form-label">Full Name *</label>
+                <input
+                  id="checkoutName"
+                  type="text"
+                  required
+                  placeholder="Your full name"
+                  value="{{ session.customer.name if session.get('customer') else '' }}"
+                  class="form-input"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="checkoutPhone" class="form-label">Mobile Phone (For Order SMS) *</label>
+                <input
+                  id="checkoutPhone"
+                  type="tel"
+                  required
+                  placeholder="+91 Mobile number"
+                  value="{{ session.customer.phone if session.get('customer') else '' }}"
+                  class="form-input"
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="checkoutEmail" class="form-label">Email Address *</label>
+              <input
+                id="checkoutEmail"
+                type="email"
+                required
+                placeholder="your.email@example.com"
+                value="{{ session.customer.email if session.get('customer') else '' }}"
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="checkoutNotes" class="form-label">Barista or Kitchen Notes</label>
+              <input
+                id="checkoutNotes"
+                type="text"
+                placeholder="e.g. Extra hot flat white, dressing on side"
+                class="form-input"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- 02. Payment Method -->
+        <div class="card-clean">
+          <div style="margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--color-border);">
+            <span style="font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-wider); font-weight: 700; color: var(--color-text-primary);">
+              02. Payment Settlement
+            </span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <button
+              type="button"
+              onclick="selectPaymentMode('UPI')"
+              id="payMode-UPI"
+              style="padding: 20px; background-color: var(--color-cream-surface); border: 2px solid var(--color-espresso); border-radius: var(--radius-xs); text-align: left; cursor: pointer; transition: all var(--transition-fast);"
+            >
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; color: var(--color-espresso);">Razorpay & UPI</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 16px; height: 16px; color: var(--color-forest);"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              <p style="font-size: var(--text-xs); color: var(--color-text-secondary); margin: 0; line-height: 1.4;">
+                Instant UPI, GPay, PhonePe, Cards & NetBanking.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onclick="selectPaymentMode('Counter')"
+              id="payMode-Counter"
+              style="padding: 20px; background-color: var(--color-white); border: 1px solid var(--color-border); border-radius: var(--radius-xs); text-align: left; cursor: pointer; transition: all var(--transition-fast);"
+            >
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-family: var(--font-serif); font-size: 1.15rem; font-weight: 500; color: var(--color-espresso);">Pay at Counter</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="hidden" style="width: 16px; height: 16px; color: var(--color-forest);"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              <p style="font-size: var(--text-xs); color: var(--color-text-secondary); margin: 0; line-height: 1.4;">
+                Settle physically with your barista prior to departing.
+              </p>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Sticky Summary -->
+      <div>
+        <div class="card-clean" style="position: sticky; top: 110px; padding: 32px;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--color-border); padding-bottom: 16px; margin-bottom: 20px;">
+            <h3 style="font-size: 1.6rem; margin: 0;">Tray Summary</h3>
+            <span id="checkoutItemCount" style="font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-accent-bronze); font-weight: 600;">
+              0 items
+            </span>
+          </div>
+
+          <!-- Dynamic List -->
+          <div id="checkoutItemsList" style="display: flex; flex-direction: column; gap: 12px; max-height: 240px; overflow-y: auto; margin-bottom: 24px;">
+            <!-- Rendered by JS -->
+          </div>
+
+          <!-- Promo Code -->
+          <div style="border-top: 1px solid var(--color-border); padding-top: 20px; margin-bottom: 20px;">
+            <label for="promoCodeInput" class="form-label" style="margin-bottom: 6px;">Privilege Code</label>
+            <div style="display: flex; gap: 8px;">
+              <input
+                id="promoCodeInput"
+                type="text"
+                placeholder="e.g. SMART10"
+                class="form-input"
+                style="text-transform: uppercase; font-size: var(--text-xs); padding: 8px 12px;"
+              />
+              <button
+                type="button"
+                onclick="applyPromoCode()"
+                class="btn-pill btn-pill-primary btn-pill-sm"
+              >
+                <span>Apply</span>
+              </button>
+            </div>
+            <p id="promoMessage" class="hidden" style="font-size: var(--text-xs); color: var(--color-success); margin: 6px 0 0; font-weight: 500;"></p>
+          </div>
+
+          <!-- Totals Breakdown -->
+          <div style="border-top: 1px solid var(--color-border); padding-top: 16px; margin-bottom: 24px; display: flex; flex-direction: column; gap: 10px; font-size: var(--text-sm);">
+            <div style="display: flex; justify-content: space-between; color: var(--color-text-secondary);">
+              <span>Subtotal</span>
+              <span id="summarySubtotal" style="font-weight: 500; color: var(--color-text-primary);">₹0</span>
+            </div>
+            <div id="discountRow" class="hidden" style="display: flex; justify-content: space-between; color: var(--color-success); font-weight: 500;">
+              <span>Privilege Discount</span>
+              <span id="summaryDiscount">-₹0</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; color: var(--color-text-secondary);">
+              <span>GST (5%)</span>
+              <span id="summaryTax" style="font-weight: 500; color: var(--color-text-primary);">₹0</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--color-border); padding-top: 14px; margin-top: 4px;">
+              <span style="font-weight: 600; text-transform: uppercase; font-size: var(--text-xs); letter-spacing: var(--tracking-wider);">Total Amount</span>
+              <div style="text-align: right;">
+                <span style="font-size: 10px; color: var(--color-accent-bronze); letter-spacing: var(--tracking-wider); text-transform: uppercase; margin-right: 4px;">INR</span>
+                <span id="summaryTotal" style="font-family: var(--font-serif); font-size: 2rem; font-weight: 600; color: var(--color-espresso);">₹0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Submit Settlement Button -->
+          <button
+            type="button"
+            id="placeOrderBtn"
+            onclick="handleFinalCheckout()"
+            class="btn-pill btn-pill-primary"
+            style="width: 100%; justify-content: center; padding: 16px 24px;"
+          >
+            <span id="placeOrderBtnText">Settle & Dispatch Order</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+
+          <p style="font-size: 11px; color: var(--color-text-muted); text-align: center; margin: 12px 0 0;">
+            Encrypted transactions &bull; Direct kitchen ticket print
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  let selectedPayMode = "UPI";
+  let appliedPromo = "";
+  let currentServerTotals = { subtotal: 0, discount: 0, tax: 0, total: 0 };
+  const razorpayKey = "{{ razorpay_key }}";
+
+  function handleCheckoutTableChange(val) {
+    setGlobalTable(val);
+    const display = document.getElementById("checkoutTableDisplay");
+    if (display) display.textContent = val === "Takeaway" ? "Takeaway Counter" : "Table " + val;
+  }
+
+  function selectPaymentMode(mode) {
+    selectedPayMode = mode;
+    const upiBtn = document.getElementById("payMode-UPI");
+    const counterBtn = document.getElementById("payMode-Counter");
+
+    if (mode === "UPI") {
+      upiBtn.style.border = "2px solid var(--color-espresso)";
+      upiBtn.style.backgroundColor = "var(--color-cream-surface)";
+      upiBtn.querySelector("svg").classList.remove("hidden");
+
+      counterBtn.style.border = "1px solid var(--color-border)";
+      counterBtn.style.backgroundColor = "var(--color-white)";
+      counterBtn.querySelector("svg").classList.add("hidden");
+    } else {
+      counterBtn.style.border = "2px solid var(--color-espresso)";
+      counterBtn.style.backgroundColor = "var(--color-cream-surface)";
+      counterBtn.querySelector("svg").classList.remove("hidden");
+
+      upiBtn.style.border = "1px solid var(--color-border)";
+      upiBtn.style.backgroundColor = "var(--color-white)";
+      upiBtn.querySelector("svg").classList.add("hidden");
+    }
+
+    const btnText = document.getElementById("placeOrderBtnText");
+    if (mode === "Counter") {
+      btnText.textContent = "Place Order (Pay at Counter)";
+    } else {
+      btnText.textContent = "Settle & Dispatch Order";
+    }
+  }
+
+  async function calculateServerPrice() {
+    const cart = getLocalCart();
+    if (cart.length === 0) {
+      document.getElementById("checkoutEmptyWarning").classList.remove("hidden");
+      document.getElementById("checkoutMainContainer").classList.add("hidden");
+      return;
+    }
+
+    document.getElementById("checkoutEmptyWarning").classList.add("hidden");
+    document.getElementById("checkoutMainContainer").classList.remove("hidden");
+
+    const itemsList = document.getElementById("checkoutItemsList");
+    itemsList.innerHTML = "";
+    let count = 0;
+
+    cart.forEach(item => {
+      count += item.quantity;
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.justifyContent = "space-between";
+      row.style.alignItems = "flex-start";
+      row.style.padding = "8px 0";
+      row.style.borderBottom = "1px solid var(--color-border)";
+
+      row.innerHTML = `
+        <div>
+          <span style="font-size: var(--text-xs); font-weight: 600; color: var(--color-text-primary); display: block;">
+            ${item.quantity}&times; ${item.name}
+          </span>
+          ${item.options && item.options.length ? `<span style="font-size: 11px; color: var(--color-text-muted);">${item.options.map(o => o.optionName).join(", ")}</span>` : ''}
+        </div>
+        <span style="font-family: var(--font-serif); font-size: var(--text-sm); font-weight: 600; color: var(--color-text-primary);">
+          ₹${item.price * item.quantity}
+        </span>
+      `;
+      itemsList.appendChild(row);
+    });
+
+    document.getElementById("checkoutItemCount").textContent = count + (count === 1 ? " item" : " items");
+
+    try {
+      const res = await fetch("/api/cart/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: cart,
+          promo_code: appliedPromo
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        currentServerTotals = data;
+        document.getElementById("summarySubtotal").textContent = "₹" + data.subtotal;
+        document.getElementById("summaryTax").textContent = "₹" + data.tax;
+        document.getElementById("summaryTotal").textContent = "₹" + data.total;
+
+        const discRow = document.getElementById("discountRow");
+        if (data.discount > 0) {
+          discRow.classList.remove("hidden");
+          discRow.style.display = "flex";
+          document.getElementById("summaryDiscount").textContent = "-₹" + data.discount;
+        } else {
+          discRow.classList.add("hidden");
+          discRow.style.display = "none";
+        }
+      }
+    } catch (err) {
+      console.warn("Server calculation fallback:", err);
+    }
+  }
+
+  function applyPromoCode() {
+    const val = document.getElementById("promoCodeInput").value.trim().toUpperCase();
+    if (!val) return;
+    appliedPromo = val;
+    calculateServerPrice().then(() => {
+      const msg = document.getElementById("promoMessage");
+      msg.classList.remove("hidden");
+      msg.textContent = "Privilege code '" + val + "' applied.";
+    });
+  }
+
+  async function handleFinalCheckout() {
+    const cart = getLocalCart();
+    if (cart.length === 0) {
+      showToast("Tray Empty", "Please select offerings from the menu first.", true);
+      return;
+    }
+
+    const name = document.getElementById("checkoutName").value.trim();
+    const phone = document.getElementById("checkoutPhone").value.trim();
+    const email = document.getElementById("checkoutEmail").value.trim();
+    // Check authentication requirement
+    {% if not (session.get('customer') and session.customer.get('email')) %}
+    const sessionCustomerRaw = sessionStorage.getItem("smartcafe_current_customer");
+    let sessionUser = null;
+    try { sessionUser = JSON.parse(sessionCustomerRaw); } catch {}
+    if (!sessionUser || !sessionUser.email) {
+      showToast("Sign In Required", "Please sign in to confirm and place your order.", true);
+      setTimeout(() => {
+        window.location.href = "/login?next=/checkout";
+      }, 900);
+      return;
+    }
+    {% endif %}
+
+    const notes = document.getElementById("checkoutNotes") ? document.getElementById("checkoutNotes").value.trim() : "";
+    const tableNum = getGlobalTable();
+
+    if (!name || !phone || !email) {
+      showToast("Required Information", "Please enter your name, contact phone, and email address.", true);
+      return;
+    }
+
+    const btn = document.getElementById("placeOrderBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<span>Processing Settlement...</span>';
+
+    // 1. If Razorpay UPI / Card payment
+    if (selectedPayMode === "UPI") {
+      try {
+        const rzpOrderRes = await fetch("/api/payment/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: cart,
+            promo_code: appliedPromo,
+            customer_name: name
+          })
+        });
+        const rzpData = await rzpOrderRes.json();
+
+        if (!rzpData.success || !rzpData.order_id) {
+          showToast("Payment Setup Error", rzpData.error || "Could not initialize payment gateway.", true);
+          btn.disabled = false;
+          btn.innerHTML = '<span id="placeOrderBtnText">Settle & Dispatch Order</span>';
+          return;
+        }
+
+        const options = {
+          key: rzpData.key_id || razorpayKey,
+          amount: rzpData.amount,
+          currency: rzpData.currency || "INR",
+          name: "SmartCafe",
+          description: "Table " + tableNum + " Dining Settlement",
+          image: "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=120&q=80",
+          order_id: rzpData.order_id,
+          handler: async function (response) {
+            btn.innerHTML = '<span>Verifying Payment...</span>';
+            try {
+              const verifyRes = await fetch("/api/payment/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  table_number: tableNum,
+                  customer_name: name,
+                  customer_phone: phone,
+                  customer_email: email,
+                  special_instructions: notes,
+                  items: cart,
+                  promo_code: appliedPromo
+                })
+              });
+              const verifyData = await verifyRes.json();
+              if (verifyData.success && verifyData.order_id) {
+                clearLocalCart();
+                showToast("Order Confirmed", "Payment verified and order transmitted to kitchen!");
+                window.location.href = "/order/" + verifyData.order_id;
+              } else {
+                showToast("Verification Failed", verifyData.error || "Payment signature mismatch.", true);
+                btn.disabled = false;
+                btn.innerHTML = '<span id="placeOrderBtnText">Settle & Dispatch Order</span>';
+              }
+            } catch (vErr) {
+              showToast("Network Error", "Could not verify payment with server.", true);
+              btn.disabled = false;
+              btn.innerHTML = '<span id="placeOrderBtnText">Settle & Dispatch Order</span>';
+            }
+          },
+          prefill: { name: name, email: email, contact: phone },
+          theme: { color: "#121110" },
+          modal: {
+            ondismiss: function () {
+              // User dismissed or cancelled Razorpay modal
+              // An order must NEVER be created on payment dismissal
+              showToast("Payment Cancelled", "Payment was not completed. No order was created.");
+              btn.disabled = false;
+              btn.innerHTML = '<span id="placeOrderBtnText">Settle & Dispatch Order</span>';
+            }
+          }
+        };
+
+        const rzpInstance = new Razorpay(options);
+        rzpInstance.open();
+        return;
+      } catch (err) {
+        showToast("Payment Error", "Unable to open payment gateway. Please retry or choose Pay at Counter.", true);
+        btn.disabled = false;
+        btn.innerHTML = '<span id="placeOrderBtnText">Settle & Dispatch Order</span>';
+        return;
+      }
+    }
+
+    // 2. Direct Counter Order (User explicitly selected Pay at Counter)
+    try {
+      const orderRes = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          table_number: tableNum,
+          customer_name: name,
+          customer_phone: phone,
+          customer_email: email,
+          special_instructions: notes,
+          items: cart,
+          promo_code: appliedPromo,
+          payment_method: "Counter"
+        })
+      });
+      const orderData = await orderRes.json();
+
+      if (orderData.success && orderData.order) {
+        clearLocalCart();
+        showToast("Order Placed", "Your table order #" + orderData.order.id + " has been transmitted to kitchen.");
+        window.location.href = "/order/" + orderData.order.id;
+      } else {
+        showToast("Order Error", orderData.error || "Could not place order.", true);
+        btn.disabled = false;
+        btn.innerHTML = '<span id="placeOrderBtnText">Place Order (Pay at Counter)</span>';
+      }
+    } catch (err) {
+      showToast("Error", "Network error. Please try again.", true);
+      btn.disabled = false;
+      btn.innerHTML = '<span id="placeOrderBtnText">Place Order (Pay at Counter)</span>';
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    calculateServerPrice();
+  });
+</script>
+{% endblock %}

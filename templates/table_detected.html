@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Table {{ table.number }} Identified — SmartCafe Bengaluru{% endblock %}
+
+{% block content %}
+<main style="padding-top: 140px; padding-bottom: 120px; background-color: var(--color-ivory); min-height: 85vh; display: flex; align-items: center;">
+  <div class="container container-narrow" style="max-width: 640px; margin: 0 auto;">
+    
+    <div class="card-clean reveal" style="padding: 48px 40px; background-color: var(--color-white); border: 1px solid var(--color-border); text-align: center; box-shadow: 0 16px 36px -10px rgba(18, 17, 16, 0.06);">
+      
+      <!-- Live Station Indicator -->
+      <div style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: var(--radius-full); background-color: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; font-size: 11px; font-weight: 600; letter-spacing: var(--tracking-wider); text-transform: uppercase; margin-bottom: 24px;">
+        <span style="width: 7px; height: 7px; border-radius: 50%; background-color: #059669; animation: pulse 2s infinite;"></span>
+        <span>Station Active &bull; Verified</span>
+      </div>
+
+      <span class="eyebrow" style="color: var(--color-accent-bronze); text-transform: uppercase; font-size: var(--text-xs); letter-spacing: 0.16em; font-weight: 600; display: block; margin-bottom: 8px;">
+        Dining Station Identification
+      </span>
+
+      <h1 style="font-family: var(--font-serif); font-size: clamp(2.6rem, 5vw, 3.8rem); margin: 0 0 12px; color: var(--color-charcoal); font-weight: 400; line-height: 1.1; text-transform: uppercase;">
+        Table {{ table.number }} Detected
+      </h1>
+
+      <p style="font-family: var(--font-serif); font-size: 1.25rem; font-style: italic; color: var(--color-accent-bronze); margin-bottom: 20px;">
+        {{ table.section }} &bull; Station {{ table.id }}
+      </p>
+
+      {% if table_changed %}
+      <!-- Table Destination Changed Banner -->
+      <div style="background-color: var(--color-cream-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xs); padding: 14px 18px; margin-bottom: 24px; text-align: left; display: flex; align-items: flex-start; gap: 12px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px; color: var(--color-accent-bronze); flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        <div>
+          <strong style="font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-charcoal); display: block;">Table Destination Updated</strong>
+          <p style="font-size: var(--text-xs); color: var(--color-olive); margin: 2px 0 0; line-height: 1.5;">
+            Seated station transitioned from <strong>Table {{ previous_table }}</strong> to <strong>Table {{ table.number }}</strong>. Your existing tray items remain safely preserved.
+          </p>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if reservation_note %}
+      <!-- Reservation Match/Discrepancy Note -->
+      <div style="background-color: #FEF3C7; border: 1px solid #FDE68A; border-radius: var(--radius-xs); padding: 14px 18px; margin-bottom: 24px; text-align: left; display: flex; align-items: flex-start; gap: 12px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#92400E" stroke-width="2" style="width: 18px; height: 18px; flex-shrink: 0; margin-top: 2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        <p style="font-size: var(--text-xs); color: #92400E; margin: 0; line-height: 1.5;">
+          {{ reservation_note }}
+        </p>
+      </div>
+      {% endif %}
+
+      <p style="font-size: var(--text-sm); color: var(--color-olive); line-height: 1.6; margin-bottom: 32px; max-width: 480px; margin-left: auto; margin-right: auto;">
+        You are ordering from this table. Directing to Tasting Menu in a moment...
+      </p>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
+        <a href="/menu" class="btn-pill btn-pill-primary" style="text-decoration: none; padding: 14px 32px;">
+          <span>Continue to Menu &rarr;</span>
+        </a>
+        <a href="/cart" class="btn-pill btn-pill-secondary" style="text-decoration: none; padding: 14px 24px;">
+          <span>View Tray</span>
+        </a>
+      </div>
+
+      <!-- Station Features Microcopy -->
+      <div style="margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--color-border); display: flex; justify-content: space-around; text-align: center; font-size: 11px; color: var(--color-olive);">
+        <div>
+          <span style="display: block; font-weight: 600; color: var(--color-charcoal); text-transform: uppercase;">Atmosphere</span>
+          <span>{{ table.section }}</span>
+        </div>
+        <div style="width: 1px; height: 28px; background: var(--color-border);"></div>
+        <div>
+          <span style="display: block; font-weight: 600; color: var(--color-charcoal); text-transform: uppercase;">Capacity</span>
+          <span>Up to {{ table.capacity }} Guests</span>
+        </div>
+        <div style="width: 1px; height: 28px; background: var(--color-border);"></div>
+        <div>
+          <span style="display: block; font-weight: 600; color: var(--color-charcoal); text-transform: uppercase;">Service</span>
+          <span>Table Ticket Print</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const tableNum = "{{ table.number }}";
+    // Sync client table context
+    if (typeof setGlobalTable === "function") {
+      setGlobalTable(tableNum);
+    } else {
+      localStorage.setItem("smartcafe_table", tableNum);
+      const navBadge = document.getElementById("activeTableBadge");
+      if (navBadge) navBadge.textContent = "● TABLE " + tableNum;
+    }
+    // Auto redirect to /menu after 2 seconds
+    setTimeout(() => {
+      window.location.href = "/menu";
+    }, 2000);
+  });
+</script>
+{% endblock %}
