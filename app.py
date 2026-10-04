@@ -295,9 +295,19 @@ def admin_page():
     menu_items = db_manager.get_menu_items(only_available=False)
     users = db_manager.get_users()
 
-    total_revenue = sum(o.get("total", 0) for o in orders if o.get("status") != "CANCELLED")
-    active_count = len([o for o in orders if o.get("status") in ("PENDING", "CONFIRMED", "PREPARING")])
-    ready_count = len([o for o in orders if o.get("status") == "READY"])
+    # Safe helpers: Firestore may store total as string or number
+    def _safe_total(o):
+        try:
+            return float(o.get("total") or o.get("amount") or o.get("grand_total") or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def _status(o):
+        return str(o.get("status") or "").upper()
+
+    total_revenue = int(sum(_safe_total(o) for o in orders if _status(o) != "CANCELLED"))
+    active_count = len([o for o in orders if _status(o) in ("PENDING", "CONFIRMED", "PREPARING")])
+    ready_count = len([o for o in orders if _status(o) == "READY"])
 
     return render_template(
         "admin.html",
@@ -890,12 +900,22 @@ def api_admin_stats():
     reservations = db_manager.get_reservations()
     tables = db_manager.get_tables()
 
-    total_rev = sum(o.get("total", 0) for o in orders if o.get("status") != "CANCELLED")
-    active_orders = len([o for o in orders if o.get("status") in ("PENDING", "CONFIRMED", "PREPARING")])
-    ready_orders = len([o for o in orders if o.get("status") == "READY"])
+    def _safe_total(o):
+        try:
+            return float(o.get("total") or o.get("amount") or o.get("grand_total") or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def _status(o):
+        return str(o.get("status") or "").upper()
+
+    total_rev = int(sum(_safe_total(o) for o in orders if _status(o) != "CANCELLED"))
+    active_orders = len([o for o in orders if _status(o) in ("PENDING", "CONFIRMED", "PREPARING")])
+    ready_orders = len([o for o in orders if _status(o) == "READY"])
 
     occupied_tables = len(set(
-        o.get("table_number") for o in orders if o.get("status") in ("PENDING", "CONFIRMED", "PREPARING", "READY")
+        o.get("table_number") for o in orders
+        if _status(o) in ("PENDING", "CONFIRMED", "PREPARING", "READY")
     ))
 
     return jsonify({

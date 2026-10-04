@@ -493,9 +493,17 @@ class FirestoreManager:
                 query = firestore_client.collection("orders")
                 if customer_email:
                     query = query.where("customer_email", "==", customer_email.lower())
-                docs = query.order_by("created_at", direction=firestore.Query.DESCENDING).stream()
-                orders = [d.to_dict() for d in docs]
-                if orders:
+                docs = list(query.order_by("created_at", direction=firestore.Query.DESCENDING).stream())
+                if docs:
+                    orders = []
+                    for d in docs:
+                        data = d.to_dict()
+                        # Always attach the Firestore document ID so update calls can find it
+                        data["doc_id"] = d.id
+                        # Ensure 'id' field is populated (may differ from doc_id if stored separately)
+                        if not data.get("id"):
+                            data["id"] = data.get("orderNumber") or d.id
+                        orders.append(data)
                     return orders
             except Exception as e:
                 logger.error(f"Firestore get_orders error: {e}")
@@ -505,17 +513,66 @@ class FirestoreManager:
             orders = [o for o in orders if o.get("customer_email", "").lower() == customer_email.lower()]
         return orders
 
+    def _resolve_order_doc(self, order_id):
+        """Return (firestore_doc_snapshot, dict) for an order by searching:
+        1. Direct document ID match (fast path)
+        2. Field query on 'id' field (covers SC-XXXX stored as field)
+        3. Field query on 'orderNumber' field (legacy field name)
+        Returns (doc_snapshot, None) or (None, None) if not found."""
+        if not is_firebase_live:
+            return None, None
+        collection = firestore_client.collection("orders")
+        # 1. Direct document lookup
+        try:
+            doc = collection.document(order_id).get()
+            if doc.exists:
+                data = doc.to_dict()
+                data["doc_id"] = doc.id
+                if not data.get("id"):
+                    data["id"] = doc.id
+                return doc, data
+        except Exception as e:
+            logger.warning(f"[Firestore] Direct doc lookup failed for order '{order_id}': {e}")
+
+        # 2. Field query on 'id'
+        try:
+            docs = list(collection.where("id", "==", order_id).limit(1).stream())
+            if docs:
+                doc = docs[0]
+                data = doc.to_dict()
+                data["doc_id"] = doc.id
+                if not data.get("id"):
+                    data["id"] = order_id
+                return doc, data
+        except Exception as e:
+            logger.warning(f"[Firestore] Field query on 'id' failed for order '{order_id}': {e}")
+
+        # 3. Field query on 'orderNumber'
+        try:
+            docs = list(collection.where("orderNumber", "==", order_id).limit(1).stream())
+            if docs:
+                doc = docs[0]
+                data = doc.to_dict()
+                data["doc_id"] = doc.id
+                if not data.get("id"):
+                    data["id"] = order_id
+                return doc, data
+        except Exception as e:
+            logger.warning(f"[Firestore] Field query on 'orderNumber' failed for order '{order_id}': {e}")
+
+        return None, None
+
     def get_order_by_id(self, order_id):
         if is_firebase_live:
             try:
-                doc = firestore_client.collection("orders").document(order_id).get()
-                if doc.exists:
-                    return doc.to_dict()
+                doc, data = self._resolve_order_doc(order_id)
+                if data:
+                    return data
             except Exception as e:
                 logger.error(f"Firestore get_order_by_id error: {e}")
 
         for o in self._data.get("orders", []):
-            if o.get("id") == order_id:
+            if o.get("id") == order_id or o.get("doc_id") == order_id:
                 return o
         return None
 
@@ -525,12 +582,22 @@ class FirestoreManager:
                 updates = {"status": status}
                 if payment_status:
                     updates["payment_status"] = payment_status
-                firestore_client.collection("orders").document(order_id).update(updates)
+
+                doc, data = self._resolve_order_doc(order_id)
+                if doc:
+                    doc.reference.update(updates)
+                    logger.info(f"[Firestore] Order '{order_id}' (doc: {doc.id}) status updated to {status}")
+                    # Return the updated order dict immediately (Vercel has no local store)
+                    data.update(updates)
+                    return data
+                else:
+                    logger.error(f"[Firestore] update_order_status: no document found for order_id='{order_id}'")
             except Exception as e:
                 logger.error(f"Firestore update_order_status error: {e}")
 
+        # Local store fallback (dev / non-Firestore mode)
         for o in self._data.get("orders", []):
-            if o.get("id") == order_id:
+            if o.get("id") == order_id or o.get("doc_id") == order_id:
                 o["status"] = status
                 if payment_status:
                     o["payment_status"] = payment_status
