@@ -1412,7 +1412,13 @@ h1, h2, h3, h4, h5, h6,
 
 /* Desktop inline utility */
 .desktop-only-inline {
-  display: inline-flex !important;
+  display: inline-flex;
+  align-items: center;
+}
+
+.desktop-only-inline.hidden,
+.hidden {
+  display: none !important;
 }
 
 @media (max-width: 768px) {
