@@ -308,6 +308,7 @@ def admin_page():
     total_revenue = int(sum(_safe_total(o) for o in orders if _status(o) != "CANCELLED"))
     active_count = len([o for o in orders if _status(o) in ("PENDING", "CONFIRMED", "PREPARING")])
     ready_count = len([o for o in orders if _status(o) == "READY"])
+    is_server_admin = session.get("is_admin", False) or (session.get("customer", {}).get("role") == "admin")
 
     return render_template(
         "admin.html",
@@ -318,7 +319,8 @@ def admin_page():
         users=users,
         total_revenue=total_revenue,
         active_count=active_count,
-        ready_count=ready_count
+        ready_count=ready_count,
+        is_server_admin=is_server_admin
     )
 
 
@@ -958,6 +960,45 @@ def api_admin_stats():
         "total_reservations": len(reservations),
         "occupied_tables": occupied_tables,
         "total_tables": len(tables)
+    })
+
+@app.route("/api/admin/live-feed", methods=["GET"])
+def api_admin_live_feed():
+    orders = db_manager.get_orders()
+    tables = db_manager.get_tables()
+    reservations = db_manager.get_reservations()
+
+    def _safe_total(o):
+        try:
+            return float(o.get("total") or o.get("amount") or o.get("grand_total") or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def _status(o):
+        return str(o.get("status") or "").upper()
+
+    total_rev = int(sum(_safe_total(o) for o in orders if _status(o) != "CANCELLED"))
+    active_orders = len([o for o in orders if _status(o) in ("PENDING", "CONFIRMED", "PREPARING")])
+    ready_orders = len([o for o in orders if _status(o) == "READY"])
+    occupied_tables = len(set(
+        o.get("table_number") for o in orders
+        if _status(o) in ("PENDING", "CONFIRMED", "PREPARING", "READY")
+    ))
+
+    return jsonify({
+        "success": True,
+        "stats": {
+            "total_revenue": total_rev,
+            "active_orders": active_orders,
+            "ready_orders": ready_orders,
+            "total_orders": len(orders),
+            "total_reservations": len(reservations),
+            "occupied_tables": occupied_tables,
+            "total_tables": len(tables)
+        },
+        "orders": orders,
+        "tables": tables,
+        "reservations": reservations
     })
 
 @app.route("/api/admin/menu", methods=["POST"])
