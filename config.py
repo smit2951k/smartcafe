@@ -1,6 +1,11 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
+# Load .env from current file directory, parent directory, or working directory
+_base_dir = Path(__file__).resolve().parent
+load_dotenv(_base_dir / ".env")
+load_dotenv(_base_dir.parent / ".env")
 load_dotenv()
 
 class Config:
@@ -10,10 +15,10 @@ class Config:
     # Firebase Admin SDK configuration
     FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "smart-cafe-6514f")
     FIREBASE_PRIVATE_KEY = os.getenv("FIREBASE_PRIVATE_KEY", "").replace("\\n", "\n")
-    FIREBASE_CLIENT_EMAIL = os.getenv("FIREBASE_CLIENT_EMAIL", "")
+    FIREBASE_CLIENT_EMAIL = os.getenv("FIREBASE_CLIENT_EMAIL", "firebase-adminsdk-fbsvc@smart-cafe-6514f.iam.gserviceaccount.com")
     FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH", "smart-cafe-6514f-firebase-adminsdk-fbsvc-b95660154d.json")
     FIREBASE_STORAGE_BUCKET = os.getenv("FIREBASE_STORAGE_BUCKET", "smart-cafe-6514f.firebasestorage.app")
-    FIREBASE_WEB_API_KEY = os.getenv("FIREBASE_WEB_API_KEY", "")
+    FIREBASE_WEB_API_KEY = os.getenv("FIREBASE_WEB_API_KEY", "AIzaSyA01edkIDjDRltycXtjeVhruLt_HHsUOlY")
 
     # Razorpay Configuration
     RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "rzp_test_smartcafe2026")

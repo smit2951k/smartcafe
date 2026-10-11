@@ -67,10 +67,10 @@
           <input id="authInput-phone" type="tel" placeholder="+91 Mobile number" class="form-input" />
         </div>
 
-        <!-- Email -->
+        <!-- Email / Username -->
         <div class="form-group">
-          <label class="form-label" style="font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-charcoal);">Email Address</label>
-          <input id="authInput-email" type="email" required placeholder="your.email@example.com" class="form-input" />
+          <label class="form-label" style="font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-charcoal);">Email Address or Username</label>
+          <input id="authInput-email" type="text" required placeholder="your.email@example.com or admin" class="form-input" />
         </div>
 
         <!-- Password -->
@@ -98,6 +98,14 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
       </form>
+
+      <!-- Staff / Admin shortcut banner -->
+      <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(0, 0, 0, 0.08); text-align: center; font-size: 12px; color: var(--color-charcoal-muted);">
+        <span>Staff or Manager? </span>
+        <a href="/admin" style="color: var(--color-accent-bronze); font-weight: 600; text-decoration: underline;">
+          Open Staff Operations Terminal &rarr;
+        </a>
+      </div>
 
     </div>
 
@@ -202,6 +210,11 @@
     if (currentAuthMode === "signin") {
       const res = await loginCustomer(email, password);
       if (res.success) {
+        if (res.is_admin || res.redirect) {
+          showAlert("success", "Staff Admin authenticated. Unlocking Operations Terminal...");
+          setTimeout(() => window.location.href = res.redirect || "/admin", 600);
+          return;
+        }
         showAlert("success", "Signed in successfully. Resuming your sanctuary session...");
         setTimeout(() => window.location.href = targetUrl, 700);
       } else {

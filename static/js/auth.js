@@ -63,10 +63,14 @@ document.addEventListener("click", (e) => {
 
 // ─── Sign In — calls server-side Flask endpoint ──────────────────────────────
 async function loginCustomer(email, password) {
-  const cleanEmail = email.trim().toLowerCase();
+  const cleanEmail = (email || "").trim();
+  const lower = cleanEmail.toLowerCase();
 
-  if (!cleanEmail || !cleanEmail.includes("@")) {
-    return { success: false, error: "Please enter a valid email address." };
+  if (!cleanEmail) {
+    return { success: false, error: "Please enter your email or username." };
+  }
+  if (lower !== "admin" && !lower.includes("@")) {
+    return { success: false, error: "Please enter a valid email address (or 'admin' for staff)." };
   }
   if (!password) {
     return { success: false, error: "Please enter your password." };
@@ -83,11 +87,14 @@ async function loginCustomer(email, password) {
 
     if (data.success && data.customer) {
       sessionStorage.setItem("smartcafe_current_customer", JSON.stringify(data.customer));
+      if (data.is_admin || data.redirect === "/admin") {
+        localStorage.setItem("smartcafe_admin_auth", "true");
+      }
       if (typeof window.syncCartWithServer === "function") {
         await window.syncCartWithServer();
       }
       updateAuthUI(data.customer);
-      return { success: true, customer: data.customer };
+      return { success: true, customer: data.customer, redirect: data.redirect, is_admin: data.is_admin };
     }
 
     return { success: false, error: data.error || "Sign in failed. Please try again." };
