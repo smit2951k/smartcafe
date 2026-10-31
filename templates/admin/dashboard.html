@@ -1,0 +1,501 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+
+<!-- =============================================================
+     01. OPERATIONS OVERVIEW SECTION
+     ============================================================= -->
+<div id="section-overview" class="admin-section active">
+
+  <!-- 7 Clickable KPI Cards with vs-yesterday trends -->
+  <div class="kpi-grid">
+    
+    <!-- Today's Revenue -->
+    <a href="javascript:void(0)" onclick="switchSection('orders')" class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-title">Today's Revenue</span>
+        <span id="kpiRevTrend" class="kpi-trend positive">+14%</span>
+      </div>
+      <div id="kpiTodayRev" class="kpi-value">₹0</div>
+      <span class="kpi-subtext">vs yesterday settlement</span>
+    </a>
+
+    <!-- Orders Today -->
+    <a href="javascript:void(0)" onclick="switchSection('orders')" class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-title">Orders Today</span>
+        <span id="kpiOrderTrend" class="kpi-trend positive">+8%</span>
+      </div>
+      <div id="kpiOrdersToday" class="kpi-value">0</div>
+      <span class="kpi-subtext">Dispatched floor trays</span>
+    </a>
+
+    <!-- Avg Ticket ("—" when 0) -->
+    <a href="javascript:void(0)" onclick="switchSection('orders')" class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-title">Avg Ticket</span>
+        <span id="kpiAvgTicketTrend" class="kpi-trend positive">+5%</span>
+      </div>
+      <div id="kpiAvgTicket" class="kpi-value">—</div>
+      <span class="kpi-subtext">Per completed station</span>
+    </a>
+
+    <!-- Kitchen Active -->
+    <a href="javascript:void(0)" onclick="switchSection('orders')" class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-title">Kitchen Active</span>
+        <span class="kpi-trend" style="background:#FEF3C7;color:#92400E;">In Prep</span>
+      </div>
+      <div id="kpiKitchenActive" class="kpi-value" style="color:var(--admin-gold);">0</div>
+      <span class="kpi-subtext">Orders pending / brewing</span>
+    </a>
+
+    <!-- Ready on Pass -->
+    <a href="javascript:void(0)" onclick="switchSection('orders')" class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-title">Ready on Pass</span>
+        <span class="kpi-trend" style="background:#D1FAE5;color:#065F46;">Expedite</span>
+      </div>
+      <div id="kpiReadyPass" class="kpi-value" style="color:#059669;">0</div>
+      <span class="kpi-subtext">Awaiting runner delivery</span>
+    </a>
+
+    <!-- Tables Occupied -->
+    <a href="javascript:void(0)" onclick="switchSection('tables')" class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-title">Tables Occupied</span>
+        <span class="kpi-trend" style="background:#F5F5F4;color:#1C1917;">Floor Grid</span>
+      </div>
+      <div id="kpiTablesOccupied" class="kpi-value">0/8</div>
+      <span class="kpi-subtext">Active dining sessions</span>
+    </a>
+
+    <!-- Reservations Today -->
+    <a href="javascript:void(0)" onclick="switchSection('reservations')" class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-title">Reservations Today</span>
+        <span id="kpiResTrend" class="kpi-trend" style="background:#DBEAFE;color:#1E40AF;">Held</span>
+      </div>
+      <div id="kpiResToday" class="kpi-value">0</div>
+      <span class="kpi-subtext">Bookings held on host book</span>
+    </a>
+
+  </div>
+
+  <!-- 7-Day Revenue Velocity & Mini Boards Grid -->
+  <div class="overview-grid">
+    
+    <!-- 7-Day Revenue Velocity Chart -->
+    <div class="admin-card">
+      <div class="chart-header">
+        <div>
+          <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#78716C;font-weight:600;">7-Day Velocity</span>
+          <h3 class="chart-title">Revenue Trajectory</h3>
+        </div>
+        <span style="font-size:12px;color:#78716C;">Daily Net Settlement (₹)</span>
+      </div>
+      <div class="canvas-container">
+        <canvas id="revenueChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Live Orders Mini-Board & Top Items -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      
+      <!-- Mini Live Board -->
+      <div class="admin-card" style="padding:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <h4 style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Active Floor Queue</h4>
+          <a href="javascript:void(0)" onclick="switchSection('orders')" style="font-size:11.5px;color:var(--admin-gold);text-decoration:none;font-weight:600;">Full Board &rarr;</a>
+        </div>
+        <div id="overviewLiveOrdersList">
+          <!-- Populated by admin.js -->
+        </div>
+      </div>
+
+      <!-- Top Selling Items -->
+      <div class="admin-card" style="padding:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <h4 style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Boutique Bestsellers</h4>
+          <span style="font-size:11.5px;color:#78716C;">By Volume</span>
+        </div>
+        <div id="overviewTopSellingList">
+          <!-- Populated by admin.js -->
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- =============================================================
+     02. ORDERS KANBAN & TABLE SECTION
+     ============================================================= -->
+<div id="section-orders" class="admin-section">
+  
+  <!-- Toolbar: Filters & Views -->
+  <div class="orders-toolbar">
+    
+    <!-- Segmented Status Filter -->
+    <div class="segmented-control">
+      <button type="button" class="segmented-btn active" data-filter="active" onclick="setOrdersFilter('active')">Active (Live)</button>
+      <button type="button" class="segmented-btn" data-filter="pending" onclick="setOrdersFilter('pending')">Pending</button>
+      <button type="button" class="segmented-btn" data-filter="prep" onclick="setOrdersFilter('prep')">Preparing</button>
+      <button type="button" class="segmented-btn" data-filter="ready" onclick="setOrdersFilter('ready')">Ready on Pass</button>
+      <button type="button" class="segmented-btn" data-filter="completed" onclick="setOrdersFilter('completed')">Completed</button>
+      <button type="button" class="segmented-btn" data-filter="cancelled" onclick="setOrdersFilter('cancelled')">Cancelled</button>
+    </div>
+
+    <!-- Table Filter & Board / Table View Toggle -->
+    <div style="display:flex;align-items:center;gap:12px;">
+      <select id="ordersTableFilterSelect" onchange="AdminApp.tableFilter = this.value; renderOrders(AdminApp.liveFeedData.orders);" style="padding:6px 12px;border:1px solid var(--admin-border);border-radius:var(--radius-sm);background:#fff;font-size:12.5px;">
+        <option value="all">All Tables & Counters</option>
+        <option value="01">Table 01</option>
+        <option value="02">Table 02</option>
+        <option value="03">Table 03</option>
+        <option value="04">Table 04</option>
+        <option value="05">Table 05</option>
+        <option value="06">Table 06</option>
+        <option value="07">Table 07</option>
+        <option value="08">Table 08</option>
+        <option value="Takeaway">Takeaway Counter</option>
+      </select>
+
+      <div style="display:flex;border:1px solid var(--admin-border);border-radius:var(--radius-sm);overflow:hidden;">
+        <button type="button" id="viewModeBoardBtn" onclick="setOrdersViewMode('board')" class="view-toggle-btn active" title="Kanban Board View">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="3" y="3" width="7" height="18"></rect><rect x="14" y="3" width="7" height="18"></rect></svg>
+          <span>Board</span>
+        </button>
+        <button type="button" id="viewModeTableBtn" onclick="setOrdersViewMode('table')" class="view-toggle-btn" title="Dense Table View">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+          <span>Table</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Kanban Board View -->
+  <div id="kanbanBoardWrapper" class="kanban-board">
+    
+    <!-- 1. PENDING COLUMN -->
+    <div class="kanban-col">
+      <div class="kanban-col-header">
+        <div class="col-title-group">
+          <span style="width:8px;height:8px;border-radius:50%;background:#F59E0B;"></span>
+          <span class="col-title">Pending</span>
+        </div>
+        <span id="countBadge-PENDING" class="col-badge">0</span>
+      </div>
+      <div id="colPendingOrders" class="kanban-cards-wrapper"></div>
+    </div>
+
+    <!-- 2. PREPARING COLUMN -->
+    <div class="kanban-col">
+      <div class="kanban-col-header">
+        <div class="col-title-group">
+          <span style="width:8px;height:8px;border-radius:50%;background:#3B82F6;"></span>
+          <span class="col-title">Preparing</span>
+        </div>
+        <span id="countBadge-PREPARING" class="col-badge">0</span>
+      </div>
+      <div id="colPrepOrders" class="kanban-cards-wrapper"></div>
+    </div>
+
+    <!-- 3. READY ON PASS COLUMN -->
+    <div class="kanban-col">
+      <div class="kanban-col-header">
+        <div class="col-title-group">
+          <span style="width:8px;height:8px;border-radius:50%;background:#10B981;"></span>
+          <span class="col-title">Ready on Pass</span>
+        </div>
+        <span id="countBadge-READY" class="col-badge">0</span>
+      </div>
+      <div id="colReadyOrders" class="kanban-cards-wrapper"></div>
+    </div>
+
+    <!-- 4. COMPLETED COLUMN -->
+    <div class="kanban-col">
+      <div class="kanban-col-header">
+        <div class="col-title-group">
+          <span style="width:8px;height:8px;border-radius:50%;background:#6B7280;"></span>
+          <span class="col-title">Completed</span>
+        </div>
+        <span id="countBadge-COMPLETED" class="col-badge">0</span>
+      </div>
+      <div id="colCompletedOrders" class="kanban-cards-wrapper"></div>
+    </div>
+
+  </div>
+
+  <!-- Dense Table View (Toggled) -->
+  <div id="ordersTableWrapper" class="admin-card hidden" style="padding:0;overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;text-align:left;font-size:13px;">
+      <thead>
+        <tr style="background:#F5F5F4;border-bottom:1px solid #E7E5E4;color:#78716C;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">
+          <th style="padding:12px 16px;">Order ID</th>
+          <th style="padding:12px 16px;">Table</th>
+          <th style="padding:12px 16px;">Patron</th>
+          <th style="padding:12px 16px;">Items Preview</th>
+          <th style="padding:12px 16px;">Total</th>
+          <th style="padding:12px 16px;">Elapsed</th>
+          <th style="padding:12px 16px;">Status</th>
+        </tr>
+      </thead>
+      <tbody id="ordersTableBody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+
+<!-- =============================================================
+     03. RESERVATIONS SECTION
+     ============================================================= -->
+<div id="section-reservations" class="admin-section">
+  
+  <div class="admin-card" style="padding:0;overflow-x:auto;">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--admin-border);display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <h3 style="font-family:var(--font-serif);font-size:1.35rem;margin:0 0 2px;">Table Booking Register</h3>
+        <span style="font-size:12px;color:#78716C;">Guest station reservations and seating arrivals</span>
+      </div>
+      <button type="button" onclick="fetchLiveFeed()" class="action-btn-sm btn-secondary-action" style="padding:6px 12px;">Refresh Registry</button>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;text-align:left;font-size:13px;">
+      <thead>
+        <tr style="background:#F5F5F4;border-bottom:1px solid #E7E5E4;color:#78716C;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">
+          <th style="padding:12px 16px;">Booking Code</th>
+          <th style="padding:12px 16px;">Patron Name / Mobile</th>
+          <th style="padding:12px 16px;">Party Size</th>
+          <th style="padding:12px 16px;">Arrival Time</th>
+          <th style="padding:12px 16px;">Zone & Table</th>
+          <th style="padding:12px 16px;">Status</th>
+          <th style="padding:12px 16px;">Action</th>
+        </tr>
+      </thead>
+      <tbody id="reservationsTableBody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+
+<!-- =============================================================
+     04. FLOOR TABLES GRID SECTION
+     ============================================================= -->
+<div id="section-tables" class="admin-section">
+  
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <h3 style="font-family:var(--font-serif);font-size:1.35rem;margin:0 0 4px;">Architectural Floor Map</h3>
+      <p style="font-size:12px;color:#78716C;margin:0;">Click a table node to view active order tickets or toggle cleaning status.</p>
+    </div>
+
+    <div style="display:flex;gap:12px;font-size:12px;">
+      <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#10B981;"></span> Free</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#F59E0B;"></span> Occupied</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#3B82F6;"></span> Reserved</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#EF4444;"></span> Needs Cleaning</span>
+    </div>
+  </div>
+
+  <div id="tablesFloorGrid" class="floor-grid">
+    <!-- Populated by admin.js -->
+  </div>
+
+</div>
+
+
+<!-- =============================================================
+     05. MENU MANAGEMENT & 86 CONTROLS
+     ============================================================= -->
+<div id="section-menu" class="admin-section">
+  
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h3 style="font-family:var(--font-serif);font-size:1.35rem;margin:0 0 2px;">Menu Offerings & 86 Availability</h3>
+      <p style="font-size:12px;color:#78716C;margin:0;">Instantly 86 items to remove them from customer menus in real time.</p>
+    </div>
+
+    <div style="display:flex;gap:8px;">
+      <button type="button" onclick="bulkToggleMenu(true)" class="action-btn-sm btn-secondary-action" style="padding:8px 14px;">Mark All Available</button>
+      <button type="button" onclick="bulkToggleMenu(false)" class="action-btn-sm" style="background:#FEE2E2;color:#991B1B;padding:8px 14px;">86 All Offerings</button>
+    </div>
+  </div>
+
+  <!-- Menu Card Grid -->
+  <div class="menu-grid">
+    {% for item in menu_items if menu_items %}
+    <div id="menuCard-{{ item.id }}" class="menu-card-admin {% if not item.available %}is-86{% endif %}">
+      <div class="menu-img-wrap">
+        <img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy" />
+        <span style="position:absolute;top:10px;left:10px;background:rgba(18,17,16,0.75);color:#FAF9F6;font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:99px;backdrop-filter:blur(2px);">
+          {{ item.category }}
+        </span>
+      </div>
+      <div class="menu-body">
+        <div class="menu-title-row">
+          <h4 class="menu-item-name">{{ item.name }}</h4>
+          <span class="menu-item-price">₹{{ item.price }}</span>
+        </div>
+        <p style="font-size:11.5px;color:#78716C;line-height:1.4;margin:0;">{{ item.tagline }}</p>
+
+        <!-- 86 Switch -->
+        <div class="toggle-86-switch">
+          <span style="font-size:11.5px;font-weight:600;color:var(--admin-text-main);">Available on Menu</span>
+          <label class="switch">
+            <input type="checkbox" {% if item.available %}checked{% endif %} onchange="toggleItem86('{{ item.id }}', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <p style="color:#78716C;">No menu items loaded. Run database seed to populate.</p>
+    {% endfor %}
+  </div>
+
+</div>
+
+
+<!-- =============================================================
+     06. CUSTOMERS DIRECTORY (MOBILE ONLY — NO EMAIL)
+     ============================================================= -->
+<div id="section-customers" class="admin-section">
+  
+  <div class="admin-card" style="padding:0;overflow-x:auto;">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--admin-border);">
+      <h3 style="font-family:var(--font-serif);font-size:1.35rem;margin:0 0 2px;">Patron Directory</h3>
+      <span style="font-size:12px;color:#78716C;">Authenticated customer profiles and lifetime table spend</span>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;text-align:left;font-size:13px;">
+      <thead>
+        <tr style="background:#F5F5F4;border-bottom:1px solid #E7E5E4;color:#78716C;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">
+          <th style="padding:12px 16px;">Patron Name</th>
+          <th style="padding:12px 16px;">Mobile Number</th>
+          <th style="padding:12px 16px;">Total Orders</th>
+          <th style="padding:12px 16px;">Total Spend</th>
+          <th style="padding:12px 16px;">Last Visit</th>
+        </tr>
+      </thead>
+      <tbody id="customersTableBody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+
+<!-- =============================================================
+     07. SANCTUARY SETTINGS
+     ============================================================= -->
+<div id="section-settings" class="admin-section">
+  
+  <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:24px;">
+    
+    <!-- Cafe Parameters Form -->
+    <div class="admin-card">
+      <h3 style="font-family:var(--font-serif);font-size:1.35rem;margin-bottom:16px;">Sanctuary Configuration</h3>
+      <form onsubmit="saveCafeSettings(event)" style="display:flex;flex-direction:column;gap:16px;">
+        
+        <div>
+          <label style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#78716C;display:block;margin-bottom:4px;">Opening Hours</label>
+          <input type="text" id="settingsOpeningHours" value="{{ settings.opening_hours if settings else '07:30 AM – 11:00 PM Daily' }}" style="width:100%;padding:8px 12px;border:1px solid var(--admin-border);border-radius:var(--radius-sm);font-size:13px;" />
+        </div>
+
+        <div>
+          <label style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#78716C;display:block;margin-bottom:4px;">GST Rate (%)</label>
+          <input type="number" step="0.1" id="settingsGstRate" value="{{ settings.gst_rate if settings else 5.0 }}" style="width:100%;padding:8px 12px;border:1px solid var(--admin-border);border-radius:var(--radius-sm);font-size:13px;" />
+        </div>
+
+        <div>
+          <label style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#78716C;display:block;margin-bottom:4px;">Currency</label>
+          <input type="text" disabled value="Indian Rupee (₹)" style="width:100%;padding:8px 12px;border:1px solid var(--admin-border);border-radius:var(--radius-sm);background:#F5F5F4;font-size:13px;color:#78716C;" />
+        </div>
+
+        <button type="submit" class="action-btn-sm btn-primary-action" style="padding:10px 16px;width:fit-content;margin-top:8px;">Save Settings</button>
+      </form>
+    </div>
+
+    <!-- Staff Accounts & Roles -->
+    <div class="admin-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="font-family:var(--font-serif);font-size:1.35rem;margin:0;">Staff Operators</h3>
+        <button type="button" onclick="document.getElementById('addStaffModal').classList.remove('hidden')" class="action-btn-sm btn-primary-action" style="padding:6px 12px;">+ Add Operator</button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#F5F5F4;border-radius:6px;">
+          <div>
+            <strong style="font-size:13px;display:block;">Head of Operations</strong>
+            <span style="font-family:var(--font-mono);font-size:11px;color:#78716C;">@admin</span>
+          </div>
+          <span style="font-size:10.5px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:99px;background:#111;color:var(--admin-gold);">ADMIN</span>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#F5F5F4;border-radius:6px;">
+          <div>
+            <strong style="font-size:13px;display:block;">Floor Manager</strong>
+            <span style="font-family:var(--font-mono);font-size:11px;color:#78716C;">@manager</span>
+          </div>
+          <span style="font-size:10.5px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:99px;background:#E7E5E4;color:#1C1917;">MANAGER</span>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#F5F5F4;border-radius:6px;">
+          <div>
+            <strong style="font-size:13px;display:block;">Lead Barista</strong>
+            <span style="font-family:var(--font-mono);font-size:11px;color:#78716C;">@barista</span>
+          </div>
+          <span style="font-size:10.5px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:99px;background:#E7E5E4;color:#1C1917;">STAFF</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Modal: Add Staff -->
+<div id="addStaffModal" class="admin-drawer-backdrop hidden" style="display:flex;align-items:center;justify-content:center;">
+  <div class="admin-card" style="width:100%;max-width:400px;padding:24px;">
+    <h3 style="font-family:var(--font-serif);font-size:1.45rem;margin-bottom:16px;">Add Staff Operator</h3>
+    <form onsubmit="addStaffAccount(event)" style="display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="font-size:11px;font-weight:600;text-transform:uppercase;color:#78716C;">Operator Full Name</label>
+        <input type="text" id="newStaffName" required class="form-input" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;" />
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;text-transform:uppercase;color:#78716C;">Username</label>
+        <input type="text" id="newStaffUsername" required class="form-input" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;" />
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;text-transform:uppercase;color:#78716C;">Mobile</label>
+        <input type="tel" id="newStaffMobile" class="form-input" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;" />
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;text-transform:uppercase;color:#78716C;">Password</label>
+        <input type="password" id="newStaffPassword" required minlength="8" class="form-input" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;" />
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;text-transform:uppercase;color:#78716C;">Role</label>
+        <select id="newStaffRole" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+          <option value="staff">Staff (Kitchen/Pass View)</option>
+          <option value="manager">Manager (Floor & Menu Ops)</option>
+          <option value="admin">Admin (Full Control)</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="submit" class="action-btn-sm btn-primary-action" style="flex:1;padding:10px;">Create Account</button>
+        <button type="button" onclick="document.getElementById('addStaffModal').classList.add('hidden')" class="action-btn-sm btn-secondary-action" style="padding:10px;">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+

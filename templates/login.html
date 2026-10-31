@@ -1,42 +1,35 @@
 {% extends "base.html" %}
 
-{% block title %}{% if mode == 'signup' %}Register Patron Account{% else %}Patron Sign In{% endif %} — SmartCafe{% endblock %}
+{% block title %}{% if mode == 'signup' %}Create Account{% else %}Sign In{% endif %} — Aroma Cafe{% endblock %}
 
 {% block content %}
-<main style="padding-top: 140px; padding-bottom: 120px; display: flex; align-items: center; justify-content: center;">
+<main style="padding-top: 140px; padding-bottom: 120px; display: flex; align-items: center; justify-content: center; min-height: 80vh;">
   <div class="container" style="display: flex; justify-content: center;">
     
-    <div class="card-clean" style="width: 100%; max-width: 440px; padding: 48px 36px; text-align: center; border: 1px solid var(--color-border); background-color: var(--color-white);">
-      <!-- Header -->
+    <div class="card-clean" style="width: 100%; max-width: 440px; padding: 44px 36px; text-align: center; border: 1px solid var(--color-border); background-color: var(--color-white); border-radius: var(--radius-sm); box-shadow: 0 10px 30px rgba(18,17,16,0.06);">
+      
+      <!-- Brand & Title -->
       <div style="margin-bottom: 24px;">
-        <div style="width: 48px; height: 48px; border-radius: 50%; background-color: var(--color-ivory); color: var(--color-accent-bronze); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+        <div style="width: 48px; height: 48px; border-radius: 50%; background-color: var(--color-cream-muted); color: var(--color-accent-bronze); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
         </div>
-        <span class="eyebrow" style="margin-bottom: 6px; color: var(--color-accent-bronze); text-transform: uppercase; font-size: var(--text-xs); letter-spacing: 0.14em; font-weight: 600;">SmartCafe Portal</span>
-        <h1 id="authHeading" style="font-family: var(--font-serif); font-size: 2.2rem; margin: 0 0 8px; color: var(--color-charcoal); font-weight: 400;">
-          {% if mode == 'signup' %}Create account.{% else %}Welcome back.{% endif %}
+        <span class="eyebrow" style="margin-bottom: 6px; color: var(--color-accent-bronze); text-transform: uppercase; font-size: 11px; letter-spacing: 0.14em; font-weight: 700;">Aroma Cafe Sanctuary</span>
+        <h1 id="authHeading" style="font-family: var(--font-serif); font-size: 2.2rem; margin: 0 0 6px; color: var(--color-charcoal); font-weight: 500;">
+          {% if mode == 'signup' %}Join Patron Circle{% else %}Welcome Back{% endif %}
         </h1>
-        <p id="authSubheading" style="font-size: var(--text-sm); color: var(--color-olive); margin: 0 0 16px;">
-          {% if mode == 'signup' %}Join our patron circle for recognized tables and saved orders.{% else %}Sign in to view past receipts, tables, and preferences.{% endif %}
+        <p id="authSubheading" style="font-size: var(--text-sm); color: var(--color-text-secondary); margin: 0;">
+          {% if mode == 'signup' %}Create your account with your mobile number to access dining rewards and table receipts.{% else %}Sign in with your mobile number to view past orders and tables.{% endif %}
         </p>
-
-        <!-- Explicit Isolation Notice per Figma Spec -->
-        <div style="background-color: var(--color-ivory); border: 1px solid var(--color-border); padding: 10px 14px; border-radius: var(--radius-xs); margin-bottom: 20px;">
-          <p style="font-size: 11.5px; color: var(--color-charcoal); line-height: 1.45; margin: 0; font-weight: 500;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 13px; height: 13px; display: inline-block; vertical-align: -1px; margin-right: 4px; color: var(--color-accent-bronze);"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-            Login only authenticates you. It never creates an order or starts payment.
-          </p>
-        </div>
       </div>
 
-      <!-- Toggle Buttons -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; background-color: var(--color-ivory); border: 1px solid var(--color-border); border-radius: var(--radius-full); padding: 4px; margin-bottom: 24px;">
+      <!-- Segmented Mode Switch (Sign In vs Create Account) -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; background-color: var(--color-cream-muted); border: 1px solid var(--color-border); border-radius: var(--radius-full); padding: 4px; margin-bottom: 24px;">
         <button
           type="button"
           onclick="setAuthMode('signin')"
           id="modeBtn-signin"
           class="btn-pill {% if mode != 'signup' %}btn-pill-primary{% else %}btn-pill-secondary{% endif %} btn-pill-sm"
-          style="border: none;"
+          style="border: none; justify-content: center;"
         >
           Sign In
         </button>
@@ -45,194 +38,188 @@
           onclick="setAuthMode('signup')"
           id="modeBtn-signup"
           class="btn-pill {% if mode == 'signup' %}btn-pill-primary{% else %}btn-pill-secondary{% endif %} btn-pill-sm"
-          style="border: none;"
+          style="border: none; justify-content: center;"
         >
           Create Account
         </button>
       </div>
 
-      <!-- Alert -->
-      <div id="authAlert" class="hidden" style="padding: 10px 14px; font-size: var(--text-xs); border-radius: var(--radius-xs); margin-bottom: 18px;"></div>
+      <!-- Alert Box -->
+      <div id="authAlert" class="hidden" style="padding: 10px 14px; font-size: var(--text-xs); border-radius: var(--radius-xs); margin-bottom: 18px; text-align: left; line-height: 1.4;"></div>
 
-      <form onsubmit="handleAuthSubmit(event)" style="display: flex; flex-direction: column; gap: 16px; text-align: left;">
-        <!-- Name (Signup) -->
+      <form id="authForm" onsubmit="handleAuthSubmit(event)" style="display: flex; flex-direction: column; gap: 16px; text-align: left;">
+        
+        <!-- 1. Full Name (Signup only) -->
         <div id="authField-name" class="{% if mode != 'signup' %}hidden{% endif %} form-group">
-          <label class="form-label" style="font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-charcoal);">Full Name</label>
-          <input id="authInput-name" type="text" placeholder="Your full name" class="form-input" />
+          <label class="form-label" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-charcoal);">Full Name *</label>
+          <input id="authInput-name" type="text" placeholder="e.g. Smit Patel" class="form-input" autocomplete="name" />
+          <span id="authError-name" class="form-error hidden" style="font-size: 11px; color: #DC2626; margin-top: 4px; display: block;"></span>
         </div>
 
-        <!-- Phone (Signup) -->
-        <div id="authField-phone" class="{% if mode != 'signup' %}hidden{% endif %} form-group">
-          <label class="form-label" style="font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-charcoal);">Mobile Phone</label>
-          <input id="authInput-phone" type="tel" placeholder="+91 Mobile number" class="form-input" />
-        </div>
-
-        <!-- Email / Username -->
+        <!-- 2. Mobile Number (Both Sign In & Signup — NO EMAIL) -->
         <div class="form-group">
-          <label class="form-label" style="font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-charcoal);">Email Address or Username</label>
-          <input id="authInput-email" type="text" required placeholder="your.email@example.com or admin" class="form-input" />
+          <label class="form-label" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-charcoal);">Mobile Number *</label>
+          <div style="display: flex; gap: 8px;">
+            <span style="display: flex; align-items: center; justify-content: center; background-color: var(--color-cream-muted); border: 1px solid var(--color-border); border-radius: var(--radius-xs); padding: 0 12px; font-size: 13px; font-weight: 600; color: var(--color-charcoal);">
+              +91
+            </span>
+            <input
+              id="authInput-mobile"
+              type="tel"
+              required
+              maxlength="10"
+              placeholder="10-digit mobile number"
+              class="form-input"
+              style="flex: 1;"
+              autocomplete="tel"
+            />
+          </div>
+          <span id="authError-mobile" class="form-error hidden" style="font-size: 11px; color: #DC2626; margin-top: 4px; display: block;"></span>
         </div>
 
-        <!-- Password -->
+        <!-- 3. Password -->
         <div class="form-group" style="position: relative;">
-          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
-            <label class="form-label" style="font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-charcoal); margin: 0;">Password</label>
-            <a href="javascript:void(0)" onclick="handleForgotPassword()" style="font-size: 11px; color: var(--color-accent-bronze); text-decoration: underline;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+            <label class="form-label" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-charcoal); margin: 0;">Password *</label>
+            <a href="javascript:void(0)" onclick="openForgotPasswordModal()" style="font-size: 11.5px; color: var(--color-accent-bronze); text-decoration: underline;">
               Forgot password?
             </a>
           </div>
-          <input id="authInput-password" type="password" required placeholder="••••••••" class="form-input" style="padding-right: 40px;" />
-          <button
-            type="button"
-            onclick="togglePasswordVisibility()"
-            style="position: absolute; right: 12px; top: 34px; color: var(--color-olive); cursor: pointer;"
-            aria-label="Toggle password visibility"
-          >
-            <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-          </button>
+          <div style="position: relative;">
+            <input
+              id="authInput-password"
+              type="password"
+              required
+              placeholder="••••••••"
+              class="form-input"
+              style="padding-right: 42px; width: 100%;"
+              autocomplete="current-password"
+              oninput="checkPasswordStrength(this.value)"
+            />
+            <button
+              type="button"
+              onclick="togglePasswordVisibility('authInput-password', 'eyeIcon1')"
+              style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--color-text-secondary); cursor: pointer;"
+              aria-label="Toggle password visibility"
+            >
+              <svg id="eyeIcon1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+          
+          <!-- Password Strength Hint (Signup only) -->
+          <div id="passwordStrengthBox" class="{% if mode != 'signup' %}hidden{% endif %}" style="margin-top: 6px;">
+            <div style="display: flex; gap: 4px; height: 4px; margin-bottom: 4px;">
+              <span id="strengthBar1" style="flex: 1; background-color: #E5E7EB; border-radius: 2px;"></span>
+              <span id="strengthBar2" style="flex: 1; background-color: #E5E7EB; border-radius: 2px;"></span>
+              <span id="strengthBar3" style="flex: 1; background-color: #E5E7EB; border-radius: 2px;"></span>
+            </div>
+            <span id="strengthText" style="font-size: 11px; color: var(--color-text-secondary);">Minimum 8 characters</span>
+          </div>
+          <span id="authError-password" class="form-error hidden" style="font-size: 11px; color: #DC2626; margin-top: 4px; display: block;"></span>
         </div>
 
+        <!-- 4. Confirm Password (Signup only) -->
+        <div id="authField-confirm" class="{% if mode != 'signup' %}hidden{% endif %} form-group" style="position: relative;">
+          <label class="form-label" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-charcoal);">Confirm Password *</label>
+          <div style="position: relative;">
+            <input
+              id="authInput-confirm"
+              type="password"
+              placeholder="••••••••"
+              class="form-input"
+              style="padding-right: 42px; width: 100%;"
+              autocomplete="new-password"
+            />
+            <button
+              type="button"
+              onclick="togglePasswordVisibility('authInput-confirm', 'eyeIcon2')"
+              style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--color-text-secondary); cursor: pointer;"
+              aria-label="Toggle confirm password visibility"
+            >
+              <svg id="eyeIcon2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+          <span id="authError-confirm" class="form-error hidden" style="font-size: 11px; color: #DC2626; margin-top: 4px; display: block;"></span>
+        </div>
 
+        <!-- Submit Button -->
         <button type="submit" id="authSubmitBtn" class="btn-pill btn-pill-primary" style="width: 100%; justify-content: center; padding: 14px; margin-top: 6px;">
-          <span id="authBtnLabel">{% if mode == 'signup' %}Create Account{% else %}Sign In{% endif %}</span>
+          <span id="authBtnLabel">{% if mode == 'signup' %}Complete Registration{% else %}Sign In to Sanctuary{% endif %}</span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
+
       </form>
 
-      <!-- Staff / Admin shortcut banner -->
-      <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(0, 0, 0, 0.08); text-align: center; font-size: 12px; color: var(--color-charcoal-muted);">
-        <span>Staff or Manager? </span>
-        <a href="/admin" style="color: var(--color-accent-bronze); font-weight: 600; text-decoration: underline;">
-          Open Staff Operations Terminal &rarr;
-        </a>
-      </div>
+      <!-- Sanctuary Note -->
+      <p style="font-size: 11px; color: var(--color-text-secondary); margin-top: 24px; line-height: 1.5;">
+        By continuing, you agree to Aroma Cafe's dining guidelines. Your mobile number is used exclusively for table orders and reservations.
+      </p>
 
     </div>
 
   </div>
 </main>
-{% endblock %}
 
-{% block extra_scripts %}
-<script>
-  let currentAuthMode = "{{ mode or 'signin' }}";
+<!-- =============================================================
+     MOBILE OTP FORGOT PASSWORD MODAL (STUB IMPLEMENTATION)
+     ============================================================= -->
+<div id="forgotPasswordModal" class="hidden" style="position: fixed; inset: 0; background: rgba(18,17,16,0.6); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px;">
+  <div class="card-clean" style="width: 100%; max-width: 400px; background: #fff; padding: 32px 28px; border-radius: var(--radius-sm); position: relative; text-align: left;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="font-family: var(--font-serif); font-size: 1.45rem; margin: 0;">Reset Password</h3>
+      <button type="button" onclick="closeForgotPasswordModal()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--color-text-secondary);">&times;</button>
+    </div>
 
-  function setAuthMode(mode) {
-    currentAuthMode = mode;
-    const nameField = document.getElementById("authField-name");
-    const phoneField = document.getElementById("authField-phone");
-    const btnLabel = document.getElementById("authBtnLabel");
-    const heading = document.getElementById("authHeading");
-    const subheading = document.getElementById("authSubheading");
-    const signinBtn = document.getElementById("modeBtn-signin");
-    const signupBtn = document.getElementById("modeBtn-signup");
+    <!-- Step 1: Send OTP -->
+    <div id="forgotStep1">
+      <p style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-bottom: 16px;">
+        Enter your registered 10-digit mobile number to receive a verification code.
+      </p>
+      <div id="forgotAlert1" class="hidden" style="padding: 8px 12px; font-size: 11.5px; border-radius: 4px; margin-bottom: 14px;"></div>
 
-    if (mode === "signup") {
-      nameField.classList.remove("hidden");
-      phoneField.classList.remove("hidden");
-      btnLabel.textContent = "Create Account";
-      heading.textContent = "Create account.";
-      subheading.textContent = "Join our patron circle for recognized tables and saved orders.";
-      signinBtn.className = "btn-pill btn-pill-secondary btn-pill-sm";
-      signupBtn.className = "btn-pill btn-pill-primary btn-pill-sm";
-    } else {
-      nameField.classList.add("hidden");
-      phoneField.classList.add("hidden");
-      btnLabel.textContent = "Sign In";
-      heading.textContent = "Welcome back.";
-      subheading.textContent = "Sign in to view past receipts and table reservations.";
-      signinBtn.className = "btn-pill btn-pill-primary btn-pill-sm";
-      signupBtn.className = "btn-pill btn-pill-secondary btn-pill-sm";
-    }
-  }
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label class="form-label" style="font-size: 11px;">Mobile Number</label>
+        <div style="display: flex; gap: 8px;">
+          <span style="display: flex; align-items: center; background: #F5F5F4; border: 1px solid #ddd; padding: 0 10px; font-size: 12px; font-weight: 600;">+91</span>
+          <input type="tel" id="forgotInput-mobile" maxlength="10" placeholder="10-digit mobile" class="form-input" style="flex: 1;" />
+        </div>
+      </div>
 
-  async function handleForgotPassword() {
-    const email = document.getElementById("authInput-email").value.trim();
-    if (!email || !email.includes("@")) {
-      showAlert("error", "Please enter your email address above, then click 'Forgot password?'.");
-      return;
-    }
-    try {
-      const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.toLowerCase() })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showAlert("success", "Password reset email sent. Please check your inbox.");
-      } else {
-        showAlert("error", data.error || "Unable to send reset email. Please try again.");
-      }
-    } catch {
-      showAlert("error", "Unable to connect. Please try again.");
-    }
-  }
+      <button type="button" onclick="sendMobileOTP()" id="sendOtpBtn" class="btn-pill btn-pill-primary" style="width: 100%; justify-content: center; padding: 12px;">
+        <span>Dispatch Verification Code &rarr;</span>
+      </button>
+    </div>
 
-  function togglePasswordVisibility() {
-    const input = document.getElementById("authInput-password");
-    input.type = input.type === "password" ? "text" : "password";
-  }
+    <!-- Step 2: Verify OTP & New Password -->
+    <div id="forgotStep2" class="hidden">
+      <p style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-bottom: 16px;">
+        Enter the 6-digit OTP sent to your mobile and your new password.
+      </p>
+      <div id="forgotAlert2" class="hidden" style="padding: 8px 12px; font-size: 11.5px; border-radius: 4px; margin-bottom: 14px;"></div>
 
-  function showAlert(type, message) {
-    const alertBox = document.getElementById("authAlert");
-    if (type === "success") {
-      alertBox.style.backgroundColor = "var(--color-forest-subtle)";
-      alertBox.style.color = "var(--color-success)";
-      alertBox.style.border = "1px solid var(--color-success)";
-    } else {
-      alertBox.style.backgroundColor = "#FEF2F2";
-      alertBox.style.color = "#991B1B";
-      alertBox.style.border = "1px solid #FCA5A5";
-    }
-    alertBox.textContent = message;
-    alertBox.classList.remove("hidden");
-  }
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label class="form-label" style="font-size: 11px;">6-Digit OTP</label>
+        <input type="text" id="forgotInput-otp" maxlength="6" placeholder="e.g. 123456" class="form-input" style="letter-spacing: 0.2em; font-family: monospace; font-size: 15px;" />
+      </div>
 
-  async function handleAuthSubmit(e) {
-    e.preventDefault();
-    const alertBox = document.getElementById("authAlert");
-    alertBox.classList.add("hidden");
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label class="form-label" style="font-size: 11px;">New Password (min 8 chars)</label>
+        <input type="password" id="forgotInput-newPassword" placeholder="••••••••" class="form-input" />
+      </div>
 
-    const email = document.getElementById("authInput-email").value.trim();
-    const password = document.getElementById("authInput-password").value;
-    const name = document.getElementById("authInput-name").value.trim();
-    const phone = document.getElementById("authInput-phone").value.trim();
+      <div class="form-group" style="margin-bottom: 18px;">
+        <label class="form-label" style="font-size: 11px;">Confirm New Password</label>
+        <input type="password" id="forgotInput-confirmPassword" placeholder="••••••••" class="form-input" />
+      </div>
 
-    const btn = document.getElementById("authSubmitBtn");
-    btn.disabled = true;
-    btn.innerHTML = '<span>Verifying...</span>';
+      <button type="button" onclick="verifyOtpAndReset()" id="verifyResetBtn" class="btn-pill btn-pill-primary" style="width: 100%; justify-content: center; padding: 12px;">
+        <span>Save New Password & Sign In</span>
+      </button>
+    </div>
 
-    const params = new URLSearchParams(window.location.search);
-    const rawNext = "{{ next_url }}" || params.get("next") || "";
-    const targetUrl = (typeof getSafeRedirectUrl === "function") ? getSafeRedirectUrl(rawNext) : (rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/");
+  </div>
+</div>
 
-    if (currentAuthMode === "signin") {
-      const res = await loginCustomer(email, password);
-      if (res.success) {
-        if (res.is_admin || res.redirect) {
-          showAlert("success", "Staff Admin authenticated. Unlocking Operations Terminal...");
-          setTimeout(() => window.location.href = res.redirect || "/admin", 600);
-          return;
-        }
-        showAlert("success", "Signed in successfully. Resuming your sanctuary session...");
-        setTimeout(() => window.location.href = targetUrl, 700);
-      } else {
-        showAlert("error", res.error || "Invalid credentials.");
-        btn.disabled = false;
-        btn.innerHTML = '<span>Sign In</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="9 18 15 12 9 6"></polyline></svg>';
-      }
-    } else {
-      const res = await registerCustomer(name, email, password, phone);
-      if (res.success) {
-        showAlert("success", "Account created. Welcome to SmartCafe!");
-        setTimeout(() => window.location.href = targetUrl, 700);
-      } else {
-        showAlert("error", res.error || "Registration failed. Please check inputs.");
-        btn.disabled = false;
-        btn.innerHTML = '<span>Create Account</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="9 18 15 12 9 6"></polyline></svg>';
-      }
-    }
-  }
-</script>
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
 {% endblock %}

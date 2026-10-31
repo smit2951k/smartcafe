@@ -85,7 +85,7 @@ function resetScannerUI() {
   const viewfinder = document.getElementById("scannerViewfinder");
 
   if (statusEl) {
-    statusEl.textContent = "Point your camera at the QR code on your SmartCafe table.";
+    statusEl.textContent = "Point your camera at the QR code on your Aroma Cafe table.";
     statusEl.className = "scanner-status-text";
   }
   if (errorBox) errorBox.classList.add("hidden");
@@ -219,14 +219,14 @@ async function onQrCodeDetected(decodedText, decodedResult) {
   const tableId = extractTableId(decodedText);
 
   if (!tableId) {
-    // Non-SmartCafe QR detected
+    // Non-Aroma Cafe QR detected
     const statusEl = document.getElementById("scannerStatusMessage");
     if (statusEl) {
-      statusEl.textContent = "This QR code isn't a SmartCafe table QR.";
+      statusEl.textContent = "This QR code isn't an Aroma Cafe table QR.";
       statusEl.className = "scanner-status-text warning";
       setTimeout(() => {
         if (!isProcessingScan && statusEl) {
-          statusEl.textContent = "Point your camera at the QR code on your SmartCafe table.";
+          statusEl.textContent = "Point your camera at the QR code on your Aroma Cafe table.";
           statusEl.className = "scanner-status-text";
         }
       }, 3000);

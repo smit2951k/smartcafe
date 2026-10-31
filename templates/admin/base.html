@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Aroma Cafe &bull; Staff Operations Terminal{% endblock %}</title>
+
+  <!-- Google Fonts: Cormorant Garamond & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Admin Design System -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
+</head>
+<body>
+
+  <div class="admin-layout">
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebarBackdrop" class="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
+
+    <!-- -----------------------------------------------------------
+         LEFT SIDEBAR (COLLAPSIBLE ON MOBILE)
+         ----------------------------------------------------------- -->
+    <aside id="adminSidebar" class="admin-sidebar" aria-label="Staff Terminal Navigation">
+      
+      <!-- Brand Header -->
+      <div class="sidebar-header">
+        <div class="brand-badge">A</div>
+        <div class="brand-info">
+          <h1>Aroma Cafe</h1>
+          <span>Operations Console</span>
+        </div>
+      </div>
+
+      <!-- Single Primary Navigation (No Duplicate Top Tabs) -->
+      <nav class="sidebar-nav">
+        <a href="javascript:void(0)" onclick="switchSection('overview')" data-section="overview" class="nav-link active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          <span>Overview</span>
+        </a>
+
+        <a href="javascript:void(0)" onclick="switchSection('orders')" data-section="orders" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <span>Orders</span>
+          <span id="ordersNavBadge" class="nav-badge" style="display:none;">0</span>
+        </a>
+
+        <a href="javascript:void(0)" onclick="switchSection('reservations')" data-section="reservations" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          <span>Reservations</span>
+        </a>
+
+        <a href="javascript:void(0)" onclick="switchSection('tables')" data-section="tables" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+          <span>Floor Tables</span>
+        </a>
+
+        <a href="javascript:void(0)" onclick="switchSection('menu')" data-section="menu" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+          <span>Menu & 86</span>
+        </a>
+
+        <a href="javascript:void(0)" onclick="switchSection('customers')" data-section="customers" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span>Customers</span>
+        </a>
+
+        <a href="javascript:void(0)" onclick="switchSection('settings')" data-section="settings" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span>Settings</span>
+        </a>
+      </nav>
+
+      <!-- Sidebar Operator Footer -->
+      <div class="sidebar-footer">
+        <div class="operator-profile">
+          <div class="operator-avatar">
+            {{ (session.staff.name[:1] if session.get('staff') else 'S') | upper }}
+          </div>
+          <div class="operator-info">
+            <span class="operator-name">{{ session.staff.name if session.get('staff') else 'Staff Operator' }}</span>
+            <span class="operator-role">{{ session.staff.role if session.get('staff') else 'staff' }}</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- -----------------------------------------------------------
+         MAIN WORKSPACE AREA
+         ----------------------------------------------------------- -->
+    <div class="admin-main">
+      
+      <!-- Slim Top Bar -->
+      <header class="admin-topbar">
+        
+        <div class="topbar-left">
+          <button type="button" class="hamburger-btn" onclick="toggleMobileSidebar()" aria-label="Toggle Navigation">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <h2 id="adminPageTitle" class="page-heading">Operations Overview</h2>
+
+          <!-- Global Search with keyboard shortcut -->
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:#78716C;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="adminGlobalSearch" placeholder="Search orders, tables, patrons..." aria-label="Global search" />
+            <span class="search-kbd">/</span>
+          </div>
+        </div>
+
+        <!-- Grouped Status Cluster -->
+        <div class="status-cluster">
+          <div class="status-group">
+            <div class="live-feed-pill">
+              <span id="liveStatusDot" class="pulse-dot"></span>
+              <span>LIVE</span>
+            </div>
+
+            <button type="button" id="soundToggleBtn" class="sound-toggle-btn" title="Toggle audio chime alert" aria-label="Toggle audio alert">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            </button>
+
+            <button type="button" onclick="fetchLiveFeed()" style="background:none;border:none;cursor:pointer;color:#78716C;display:flex;align-items:center;" title="Sync Now" aria-label="Sync now">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            </button>
+
+            <span id="adminLiveClock" class="live-clock">--:--:--</span>
+          </div>
+
+          <a href="/" target="_blank" class="view-site-link">
+            <span>Customer Site</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </a>
+
+          <a href="/admin/logout" class="signout-btn">
+            <span>Sign Out</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          </a>
+        </div>
+
+      </header>
+
+      <!-- Content Container -->
+      <main class="admin-content">
+        {% block admin_content %}{% endblock %}
+      </main>
+
+    </div>
+
+  </div>
+
+  <!-- -----------------------------------------------------------
+       SLIDING ORDER DETAIL DRAWER
+       ----------------------------------------------------------- -->
+  <div id="adminDrawerBackdrop" class="admin-drawer-backdrop" onclick="closeOrderDetail(); closeCustomerDrawer();"></div>
+
+  <aside id="orderDetailDrawer" class="admin-drawer" aria-label="Order Details">
+    <div class="drawer-header">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+          <h3 id="drawerOrderId" style="font-family:var(--font-mono);font-size:1.15rem;margin:0;">#ORD-000</h3>
+          <span id="drawerOrderStatusPill" class="status-badge">PENDING</span>
+        </div>
+        <span id="drawerOrderTable" style="font-size:12.5px;color:var(--admin-gold);font-weight:600;">Table 01</span>
+      </div>
+      <button type="button" onclick="closeOrderDetail()" style="background:none;border:none;cursor:pointer;color:#78716C;padding:4px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div class="drawer-body">
+      <!-- Guest Info -->
+      <div style="background:#F5F5F4;padding:12px 14px;border-radius:6px;">
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#78716C;display:block;margin-bottom:2px;">Patron Information</span>
+        <strong id="drawerCustomerInfo" style="font-size:13.5px;display:block;">-</strong>
+        <span id="drawerOrderTime" style="font-size:12px;color:#78716C;">-</span>
+      </div>
+
+      <!-- Itemization -->
+      <div>
+        <h4 style="font-size:12.5px;text-transform:uppercase;letter-spacing:0.06em;color:#78716C;margin-bottom:8px;">Selected Items</h4>
+        <div id="drawerItemsList"></div>
+      </div>
+
+      <!-- Financials -->
+      <div style="border-top:1px solid #E7E5E4;padding-top:12px;display:flex;flex-direction:column;gap:6px;font-size:13px;">
+        <div style="display:flex;justify-content:space-between;color:#78716C;">
+          <span>Subtotal</span>
+          <span id="drawerSubtotal">₹0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;color:#78716C;">
+          <span>GST (5%)</span>
+          <span id="drawerTax">₹0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:1.25rem;font-weight:700;font-family:var(--font-serif);border-top:1px dashed #E7E5E4;padding-top:6px;">
+          <span>Total Settle</span>
+          <span id="drawerTotal" style="color:var(--admin-gold);">₹0</span>
+        </div>
+      </div>
+
+      <!-- Order Timeline -->
+      <div>
+        <h4 style="font-size:12.5px;text-transform:uppercase;letter-spacing:0.06em;color:#78716C;margin-bottom:12px;">Kitchen Timeline History</h4>
+        <div id="drawerTimeline"></div>
+      </div>
+    </div>
+
+    <div class="drawer-footer">
+      <button type="button" id="drawerPrintBtn" class="action-btn-sm btn-primary-action" style="padding:10px 14px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+        <span>Print Ticket (80mm)</span>
+      </button>
+
+      <button type="button" id="drawerCancelBtn" class="action-btn-sm" style="background:#FEE2E2;color:#991B1B;padding:10px 14px;">
+        <span>Cancel Order</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- -----------------------------------------------------------
+       SLIDING CUSTOMER ORDER HISTORY DRAWER
+       ----------------------------------------------------------- -->
+  <aside id="customerDetailDrawer" class="admin-drawer" aria-label="Customer Profile">
+    <div class="drawer-header">
+      <div>
+        <h3 id="custDrawerName" style="font-family:var(--font-serif);font-size:1.35rem;margin:0 0 2px;">Customer</h3>
+        <span id="custDrawerMobile" style="font-family:var(--font-mono);font-size:12px;color:var(--admin-gold);font-weight:600;">--</span>
+      </div>
+      <button type="button" onclick="closeCustomerDrawer()" style="background:none;border:none;cursor:pointer;color:#78716C;padding:4px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div class="drawer-body">
+      <!-- Quick Stats -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:#F5F5F4;padding:14px;border-radius:6px;text-align:center;">
+        <div>
+          <span style="font-size:11px;text-transform:uppercase;color:#78716C;display:block;">Total Spend</span>
+          <strong id="custDrawerSpend" style="font-family:var(--font-serif);font-size:1.5rem;color:var(--admin-gold);">₹0</strong>
+        </div>
+        <div>
+          <span style="font-size:11px;text-transform:uppercase;color:#78716C;display:block;">Orders Count</span>
+          <strong id="custDrawerOrdersCount" style="font-family:var(--font-serif);font-size:1.5rem;">0</strong>
+        </div>
+      </div>
+
+      <!-- History List -->
+      <div>
+        <h4 style="font-size:12.5px;text-transform:uppercase;letter-spacing:0.06em;color:#78716C;margin-bottom:10px;">Order History</h4>
+        <div id="custDrawerOrdersList"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Toast Notification Container -->
+  <div id="adminToastContainer" style="position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;"></div>
+
+  <!-- Thermal Kitchen Ticket Printable Area (Only visible during print) -->
+  <div id="kitchenTicketPrintArea"></div>
+
+  <!-- Admin Controller -->
+  <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>
+

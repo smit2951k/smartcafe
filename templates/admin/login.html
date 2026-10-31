@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Staff Terminal Access &bull; Aroma Cafe</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --admin-bg: #111111;
+      --admin-card: #1C1917;
+      --admin-gold: #C5A880;
+      --admin-gold-hover: #D4AF37;
+      --admin-text-white: #FAF9F6;
+      --admin-text-muted: #A8A29E;
+      --admin-border: #292524;
+      --font-serif: 'Cormorant Garamond', Georgia, serif;
+      --font-sans: 'Inter', system-ui, sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--admin-bg);
+      color: var(--admin-text-white);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .terminal-card {
+      background-color: var(--admin-card);
+      border: 1px solid var(--admin-border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 420px;
+      padding: 44px 36px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+      position: relative;
+    }
+    .brand-top {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .brand-badge {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      background-color: var(--admin-gold);
+      color: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-serif);
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin: 0 auto 14px;
+    }
+    .brand-title {
+      font-family: var(--font-serif);
+      font-size: 1.85rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      margin-bottom: 4px;
+    }
+    .brand-subtitle {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--admin-gold);
+      font-weight: 600;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+    .form-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--admin-text-muted);
+      font-weight: 600;
+    }
+    .form-input {
+      background-color: #111;
+      border: 1px solid var(--admin-border);
+      color: var(--admin-text-white);
+      border-radius: 6px;
+      padding: 12px 14px;
+      font-size: 13.5px;
+      outline: none;
+      transition: border-color 0.15s ease;
+      width: 100%;
+    }
+    .form-input:focus {
+      border-color: var(--admin-gold);
+    }
+    .login-btn {
+      background-color: var(--admin-gold);
+      color: #111;
+      border: none;
+      border-radius: 6px;
+      padding: 13px;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 8px;
+      transition: background-color 0.15s ease;
+    }
+    .login-btn:hover {
+      background-color: var(--admin-gold-hover);
+    }
+    .alert-box {
+      padding: 10px 14px;
+      background-color: #450A0A;
+      border: 1px solid #7F1D1D;
+      color: #FCA5A5;
+      font-size: 12px;
+      border-radius: 6px;
+      margin-bottom: 18px;
+      display: none;
+    }
+    .demo-credentials {
+      margin-top: 28px;
+      padding-top: 18px;
+      border-top: 1px solid var(--admin-border);
+      font-size: 11px;
+      color: var(--admin-text-muted);
+    }
+    .credential-chip {
+      display: inline-block;
+      background-color: #262626;
+      border: 1px solid #333;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin: 4px 4px 0 0;
+      cursor: pointer;
+      color: var(--admin-text-white);
+    }
+    .credential-chip:hover {
+      border-color: var(--admin-gold);
+      color: var(--admin-gold);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="terminal-card">
+    
+    <div class="brand-top">
+      <div class="brand-badge">A</div>
+      <h1 class="brand-title">Aroma Cafe</h1>
+      <span class="brand-subtitle">Staff Operations Terminal</span>
+    </div>
+
+    <div id="loginAlert" class="alert-box"></div>
+
+    <form onsubmit="handleStaffLogin(event)">
+      
+      <div class="form-group">
+        <label class="form-label">Operator Handle or Mobile</label>
+        <input type="text" id="staffIdentifier" required placeholder="admin / manager / barista" class="form-input" autocomplete="username" />
+      </div>
+
+      <div class="form-group" style="position:relative;">
+        <label class="form-label">Terminal Security Key</label>
+        <input type="password" id="staffPassword" required placeholder="••••••••" class="form-input" autocomplete="current-password" />
+        <button type="button" onclick="togglePassword()" style="position:absolute;right:12px;top:28px;background:none;border:none;color:var(--admin-text-muted);cursor:pointer;" aria-label="Toggle password visibility">
+          👁
+        </button>
+      </div>
+
+      <button type="submit" id="staffSubmitBtn" class="login-btn">
+        Access Operations Console &rarr;
+      </button>
+
+    </form>
+
+    <!-- Quick Demo Logins for Pair Programming Inspection -->
+    <div class="demo-credentials">
+      <span style="display:block;margin-bottom:6px;font-weight:600;">Seeded Operator Terminals:</span>
+      <div class="credential-chip" onclick="fillCreds('admin', 'admin@123')">🔑 Admin (@admin)</div>
+      <div class="credential-chip" onclick="fillCreds('manager', 'manager@123')">📋 Manager (@manager)</div>
+      <div class="credential-chip" onclick="fillCreds('barista', 'staff@123')">☕ Barista (@barista)</div>
+    </div>
+
+  </div>
+
+  <script>
+    function togglePassword() {
+      const pwd = document.getElementById('staffPassword');
+      pwd.type = pwd.type === 'password' ? 'text' : 'password';
+    }
+
+    function fillCreds(u, p) {
+      document.getElementById('staffIdentifier').value = u;
+      document.getElementById('staffPassword').value = p;
+    }
+
+    async function handleStaffLogin(e) {
+      e.preventDefault();
+      const identifier = document.getElementById('staffIdentifier').value.trim();
+      const password = document.getElementById('staffPassword').value;
+      const alertBox = document.getElementById('loginAlert');
+      const submitBtn = document.getElementById('staffSubmitBtn');
+
+      alertBox.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Verifying credentials...';
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier, password })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          window.location.href = data.redirect || '/admin';
+        } else {
+          alertBox.textContent = data.error || 'Authentication rejected.';
+          alertBox.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Access Operations Console →';
+        }
+      } catch (err) {
+        alertBox.textContent = 'Network communication error.';
+        alertBox.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Access Operations Console →';
+      }
+    }
+  </script>
+
+</body>
+</html>
+

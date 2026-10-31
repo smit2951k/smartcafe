@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Patron Sanctuary — SmartCafe Bengaluru{% endblock %}
+{% block title %}Patron Sanctuary — Aroma Cafe Bengaluru{% endblock %}
 
 {% block content %}
 <main style="padding-top: 140px; padding-bottom: 120px;">
@@ -23,8 +23,11 @@
 
       <form onsubmit="handleAccountInlineLogin(event)" style="display: flex; flex-direction: column; gap: 18px; text-align: left;">
         <div class="form-group">
-          <label class="form-label">Email Address</label>
-          <input id="accLoginEmail" type="email" required placeholder="Enter your email" class="form-input" />
+          <label class="form-label">Mobile Number</label>
+          <div style="display: flex; gap: 8px;">
+            <span style="display: flex; align-items: center; background: var(--color-cream-muted); border: 1px solid var(--color-border); padding: 0 10px; font-size: 12px; font-weight: 600;">+91</span>
+            <input id="accLoginMobile" type="tel" maxlength="10" required placeholder="10-digit mobile" class="form-input" style="flex: 1;" />
+          </div>
         </div>
 
         <div class="form-group">
@@ -59,7 +62,7 @@
               <span style="font-size: var(--text-xs); color: var(--color-text-muted);">&bull; Reserve Connoisseur</span>
             </div>
             <h1 style="font-size: 2.2rem; margin: 0 0 4px;">{{ customer.name }}</h1>
-            <span style="font-size: var(--text-xs); color: var(--color-text-secondary);">{{ customer.email }}</span>
+            <span style="font-size: var(--text-xs); color: var(--color-text-secondary);">+91 {{ customer.mobile }}</span>
           </div>
         </div>
 
@@ -222,12 +225,8 @@
             <input type="text" readonly value="{{ customer.name }}" class="form-input" style="background-color: var(--color-cream-surface);" />
           </div>
           <div class="form-group">
-            <label class="form-label">Email Address</label>
-            <input type="email" readonly value="{{ customer.email }}" class="form-input" style="background-color: var(--color-cream-surface);" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Mobile Phone</label>
-            <input type="tel" readonly value="{{ customer.phone }}" class="form-input" style="background-color: var(--color-cream-surface);" />
+            <label class="form-label">Mobile Number</label>
+            <input type="tel" readonly value="+91 {{ customer.mobile }}" class="form-input" style="background-color: var(--color-cream-surface);" />
           </div>
         </div>
       </div>
@@ -260,10 +259,9 @@
     }
   }
 
-
   async function handleAccountInlineLogin(e) {
     e.preventDefault();
-    const email = document.getElementById("accLoginEmail").value;
+    const mobile = document.getElementById("accLoginMobile").value.trim();
     const password = document.getElementById("accLoginPassword").value;
     const errBox = document.getElementById("accountLoginError");
     const btn = document.getElementById("accLoginBtn");
@@ -272,13 +270,24 @@
     btn.disabled = true;
     btn.innerHTML = '<span>Verifying...</span>';
 
-    const res = await loginCustomer(email, password);
-    if (res.success) {
-      showToast("Welcome Back", "Signed into your Sanctuary account.");
-      window.location.reload();
-    } else {
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile, password })
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload();
+      } else {
+        errBox.classList.remove("hidden");
+        errBox.textContent = data.error || "Invalid credentials.";
+        btn.disabled = false;
+        btn.innerHTML = '<span>Access Sanctuary</span>';
+      }
+    } catch(err) {
       errBox.classList.remove("hidden");
-      errBox.textContent = res.error || "Invalid credentials.";
+      errBox.textContent = "Network error. Please try again.";
       btn.disabled = false;
       btn.innerHTML = '<span>Access Sanctuary</span>';
     }

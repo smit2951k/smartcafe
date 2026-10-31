@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Checkout & Table Settlement — SmartCafe{% endblock %}
+{% block title %}Checkout & Table Settlement — Aroma Cafe{% endblock %}
 
 {% block content %}
 <main style="padding-top: 140px; padding-bottom: 120px;">
@@ -57,12 +57,12 @@
             <span style="font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-wider); font-weight: 700; color: var(--color-text-primary);">
               01. Guest Identification
             </span>
-            {% if session.get('customer') and session.customer.get('email') %}
+            {% if session.get('customer') and session.customer.get('mobile') %}
             <span class="status-chip status-chip-live">Recognized Patron</span>
             {% endif %}
           </div>
 
-          {% if not (session.get('customer') and session.customer.get('email')) %}
+          {% if not (session.get('customer') and session.customer.get('mobile')) %}
           <div style="background-color: var(--color-cream-surface); border: 1px dashed var(--color-accent-bronze); padding: 18px 20px; border-radius: var(--radius-xs); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
             <div>
               <span style="font-size: var(--text-xs); font-weight: 700; color: var(--color-espresso); display: block; margin-bottom: 2px;">Sign in to continue</span>
@@ -101,23 +101,11 @@
                   id="checkoutPhone"
                   type="tel"
                   required
-                  placeholder="+91 Mobile number"
-                  value="{{ session.customer.phone if session.get('customer') else '' }}"
+                  placeholder="10-digit mobile number"
+                  value="{{ session.customer.mobile or session.customer.phone if session.get('customer') else '' }}"
                   class="form-input"
                 />
               </div>
-            </div>
-
-            <div class="form-group">
-              <label for="checkoutEmail" class="form-label">Email Address *</label>
-              <input
-                id="checkoutEmail"
-                type="email"
-                required
-                placeholder="your.email@example.com"
-                value="{{ session.customer.email if session.get('customer') else '' }}"
-                class="form-input"
-              />
             </div>
 
             <div class="form-group">
@@ -188,28 +176,6 @@
           <!-- Dynamic List -->
           <div id="checkoutItemsList" style="display: flex; flex-direction: column; gap: 12px; max-height: 240px; overflow-y: auto; margin-bottom: 24px;">
             <!-- Rendered by JS -->
-          </div>
-
-          <!-- Promo Code -->
-          <div style="border-top: 1px solid var(--color-border); padding-top: 20px; margin-bottom: 20px;">
-            <label for="promoCodeInput" class="form-label" style="margin-bottom: 6px;">Privilege Code</label>
-            <div style="display: flex; gap: 8px;">
-              <input
-                id="promoCodeInput"
-                type="text"
-                placeholder="e.g. SMART10"
-                class="form-input"
-                style="text-transform: uppercase; font-size: var(--text-xs); padding: 8px 12px;"
-              />
-              <button
-                type="button"
-                onclick="applyPromoCode()"
-                class="btn-pill btn-pill-primary btn-pill-sm"
-              >
-                <span>Apply</span>
-              </button>
-            </div>
-            <p id="promoMessage" class="hidden" style="font-size: var(--text-xs); color: var(--color-success); margin: 6px 0 0; font-weight: 500;"></p>
           </div>
 
           <!-- Totals Breakdown -->
@@ -374,16 +340,7 @@
     }
   }
 
-  function applyPromoCode() {
-    const val = document.getElementById("promoCodeInput").value.trim().toUpperCase();
-    if (!val) return;
-    appliedPromo = val;
-    calculateServerPrice().then(() => {
-      const msg = document.getElementById("promoMessage");
-      msg.classList.remove("hidden");
-      msg.textContent = "Privilege code '" + val + "' applied.";
-    });
-  }
+
 
   async function handleFinalCheckout() {
     const cart = getLocalCart();
@@ -394,13 +351,12 @@
 
     const name = document.getElementById("checkoutName").value.trim();
     const phone = document.getElementById("checkoutPhone").value.trim();
-    const email = document.getElementById("checkoutEmail").value.trim();
     // Check authentication requirement
-    {% if not (session.get('customer') and session.customer.get('email')) %}
+    {% if not (session.get('customer') and session.customer.get('mobile')) %}
     const sessionCustomerRaw = sessionStorage.getItem("smartcafe_current_customer");
     let sessionUser = null;
     try { sessionUser = JSON.parse(sessionCustomerRaw); } catch {}
-    if (!sessionUser || !sessionUser.email) {
+    if (!sessionUser) {
       showToast("Sign In Required", "Please sign in to confirm and place your order.", true);
       setTimeout(() => {
         window.location.href = "/login?next=/checkout";
@@ -412,8 +368,8 @@
     const notes = document.getElementById("checkoutNotes") ? document.getElementById("checkoutNotes").value.trim() : "";
     const tableNum = getGlobalTable();
 
-    if (!name || !phone || !email) {
-      showToast("Required Information", "Please enter your name, contact phone, and email address.", true);
+    if (!name || !phone) {
+      showToast("Required Information", "Please enter your name and contact mobile number.", true);
       return;
     }
 
@@ -430,7 +386,8 @@
           body: JSON.stringify({
             items: cart,
             promo_code: appliedPromo,
-            customer_name: name
+            customer_name: name,
+            customer_mobile: phone
           })
         });
         const rzpData = await rzpOrderRes.json();
@@ -442,11 +399,44 @@
           return;
         }
 
+        // If simulated test mode (e.g. dev environment / fallback)
+        if (rzpData.simulated) {
+          btn.innerHTML = '<span>Verifying Test Payment...</span>';
+          const verifyRes = await fetch("/api/payment/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpay_order_id: rzpData.order_id,
+              razorpay_payment_id: "pay_sim_" + Date.now(),
+              razorpay_signature: "simulated_sig",
+              table_number: tableNum,
+              customer_name: name,
+              customer_phone: phone,
+              customer_mobile: phone,
+              special_instructions: notes,
+              items: cart,
+              promo_code: appliedPromo
+            })
+          });
+          const verifyData = await verifyRes.json();
+          if (verifyData.success && verifyData.order_id) {
+            clearLocalCart();
+            showToast("Order Confirmed", "Payment verified and order transmitted to kitchen!");
+            window.location.href = "/order/" + verifyData.order_id;
+            return;
+          } else {
+            showToast("Verification Failed", verifyData.error || "Payment signature mismatch.", true);
+            btn.disabled = false;
+            btn.innerHTML = '<span id="placeOrderBtnText">Settle & Dispatch Order</span>';
+            return;
+          }
+        }
+
         const options = {
           key: rzpData.key_id || razorpayKey,
           amount: rzpData.amount,
           currency: rzpData.currency || "INR",
-          name: "SmartCafe",
+          name: "Aroma Cafe",
           description: "Table " + tableNum + " Dining Settlement",
           image: "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=120&q=80",
           order_id: rzpData.order_id,
@@ -463,7 +453,7 @@
                   table_number: tableNum,
                   customer_name: name,
                   customer_phone: phone,
-                  customer_email: email,
+                  customer_mobile: phone,
                   special_instructions: notes,
                   items: cart,
                   promo_code: appliedPromo
@@ -480,17 +470,17 @@
                 btn.innerHTML = '<span id="placeOrderBtnText">Settle & Dispatch Order</span>';
               }
             } catch (vErr) {
+              console.error("Payment verification error:", vErr);
               showToast("Network Error", "Could not verify payment with server.", true);
               btn.disabled = false;
               btn.innerHTML = '<span id="placeOrderBtnText">Settle & Dispatch Order</span>';
             }
           },
-          prefill: { name: name, email: email, contact: phone },
+          prefill: { name: name, contact: phone },
           theme: { color: "#121110" },
           modal: {
             ondismiss: function () {
               // User dismissed or cancelled Razorpay modal
-              // An order must NEVER be created on payment dismissal
               showToast("Payment Cancelled", "Payment was not completed. No order was created.");
               btn.disabled = false;
               btn.innerHTML = '<span id="placeOrderBtnText">Settle & Dispatch Order</span>';
@@ -502,6 +492,7 @@
         rzpInstance.open();
         return;
       } catch (err) {
+        console.error("Razorpay initiation error:", err);
         showToast("Payment Error", "Unable to open payment gateway. Please retry or choose Pay at Counter.", true);
         btn.disabled = false;
         btn.innerHTML = '<span id="placeOrderBtnText">Settle & Dispatch Order</span>';
@@ -518,7 +509,7 @@
           table_number: tableNum,
           customer_name: name,
           customer_phone: phone,
-          customer_email: email,
+          customer_mobile: phone,
           special_instructions: notes,
           items: cart,
           promo_code: appliedPromo,
@@ -537,6 +528,7 @@
         btn.innerHTML = '<span id="placeOrderBtnText">Place Order (Pay at Counter)</span>';
       }
     } catch (err) {
+      console.error("Order submission error:", err);
       showToast("Error", "Network error. Please try again.", true);
       btn.disabled = false;
       btn.innerHTML = '<span id="placeOrderBtnText">Place Order (Pay at Counter)</span>';

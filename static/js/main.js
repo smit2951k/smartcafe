@@ -138,3 +138,30 @@ function initTableBadgeSync() {
   }
 }
 
+// Profile dropdown toggle
+function toggleProfileDropdown(forceState) {
+  const menu = document.getElementById("navProfileDropdown");
+  const btn = document.getElementById("navProfileBtn");
+  if (!menu) return;
+  const isHidden = !menu.classList.contains("is-open");
+  const willOpen = forceState !== undefined ? Boolean(forceState) : isHidden;
+  if (willOpen) {
+    menu.classList.add("is-open");
+    if (btn) btn.setAttribute("aria-expanded", "true");
+  } else {
+    menu.classList.remove("is-open");
+    if (btn) btn.setAttribute("aria-expanded", "false");
+  }
+}
+
+// Global Customer Logout
+async function logoutCustomer() {
+  try {
+    await fetch("/api/auth/logout", { method: "POST" });
+    sessionStorage.removeItem("smartcafe_current_customer");
+    window.location.href = "/";
+  } catch(e) {
+    window.location.href = "/logout";
+  }
+}
+

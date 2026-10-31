@@ -1,0 +1,51 @@
+/* ==========================================================================
+   AROMA CAFE — DESIGN TOKENS & VARIABLES
+   Brand: Dark #111 top bar/accents, warm gold #C5A880, Cormorant / Inter
+   Currency: Indian Rupee (₹), GST: 5%
+   8px Spacing Grid
+   ========================================================================== */
+
+:root {
+  /* 8px Spacing Grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Brand Colors */
+  --color-black: #111111;
+  --color-espresso: #171716;
+  --color-charcoal: #1C1917;
+  --color-gold: #C5A880;
+  --color-gold-hover: #D4AF37;
+  --color-gold-light: #F7F3EE;
+  --color-cream: #F5F1E8;
+  --color-cream-surface: #EFE9DC;
+  --color-cream-muted: #E6DEC9;
+  --color-ivory: #FAF9F6;
+  --color-white: #FFFFFF;
+  --color-border: #E7E5E4;
+  --color-border-dark: #292524;
+
+  /* Status Colors */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #3B82F6;
+
+  /* Typography */
+  --font-serif: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Tax & Currency */
+  --gst-rate: 0.05;
+  --currency-symbol: '₹';
+}
+

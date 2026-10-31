@@ -1,12 +1,14 @@
 import os
+import re
 import json
 import logging
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 from config import Config
 
 logger = logging.getLogger(__name__)
 
-# Attempt to initialize Firebase Admin SDK
+# Attempt to initialize Firebase Admin SDK (optional live cloud connection)
 firebase_app = None
 firestore_client = None
 firebase_auth = None
@@ -29,19 +31,13 @@ try:
         except Exception:
             firebase_bucket = None
 
-        # Verify whether Cloud Firestore API is enabled on the project
         try:
             list(firestore_client.collection("_health").limit(1).stream())
             is_firebase_live = True
             logger.info("[Firestore] Successfully connected to live Cloud Firestore database for project: %s", Config.FIREBASE_PROJECT_ID)
         except Exception as conn_err:
             is_firebase_live = False
-            logger.warning(
-                "[Firestore Status] Firebase Admin credentials are valid for project '%s', but the Cloud Firestore database is not yet created/enabled in Google Cloud / Firebase Console. "
-                "Error: %s. "
-                "To enable Cloud Firestore, visit: https://console.firebase.google.com/project/%s/firestore and click 'Create database'.",
-                Config.FIREBASE_PROJECT_ID, conn_err, Config.FIREBASE_PROJECT_ID
-            )
+            logger.warning("[Firestore] Using resilient local store. Error: %s", conn_err)
     elif Config.FIREBASE_CLIENT_EMAIL and Config.FIREBASE_PRIVATE_KEY:
         cred = credentials.Certificate({
             "type": "service_account",
@@ -62,21 +58,52 @@ try:
 except Exception as e:
     logger.warning(f"Firebase Admin initialization deferred: {e}. Using resilient local Firestore layer.")
 
-# Default seed data matching SmartCafe exact menu & tables
-SEED_DATA = {
+
+def normalize_mobile(mobile_str: str) -> str:
+    """
+    Normalizes Indian mobile numbers:
+    - Strips spaces, dashes, dots, parentheses, and leading '+91', '91', or '0'
+    - Validates that the remaining string is exactly 10 digits starting with 6, 7, 8, or 9
+    """
+    if not mobile_str:
+        return ""
+    cleaned = re.sub(r'[\s\-\(\)\.]', '', str(mobile_str).strip())
+    if cleaned.startswith('+91'):
+        cleaned = cleaned[3:]
+    elif cleaned.startswith('91') and len(cleaned) == 12:
+        cleaned = cleaned[2:]
+    elif cleaned.startswith('0') and len(cleaned) == 11:
+        cleaned = cleaned[1:]
+    
+    if re.match(r'^[6-9]\d{9}$', cleaned):
+        return cleaned
+    return ""
+
+
+# Default Seed Data for Aroma Cafe
+DEFAULT_SEED_DATA = {
+    "settings": {
+        "cafe_name": "Aroma Cafe",
+        "tagline": "Boutique Artisanal Sanctuary & Kitchen",
+        "location": "12th Main, Indiranagar, Bengaluru",
+        "opening_hours": "07:30 AM – 11:00 PM Daily",
+        "gst_rate": 5.0,
+        "sound_enabled": True,
+        "currency_symbol": "₹",
+        "contact_phone": "+91 82008 78170"
+    },
     "menu_categories": [
         {"id": "all", "name": "All Offerings", "order": 0},
         {"id": "coffee", "name": "Coffee & Espresso", "order": 1},
-        {"id": "breakfast", "name": "Morning Plates", "order": 2},
-        {"id": "brunch", "name": "Brunch & Tartines", "order": 3},
-        {"id": "mains", "name": "Bowls & Mains", "order": 4},
-        {"id": "desserts", "name": "Pastry & Sweets", "order": 5},
-        {"id": "drinks", "name": "Botanicals & Tea", "order": 6},
+        {"id": "manual_brew", "name": "Manual Brews", "order": 2},
+        {"id": "tea", "name": "Tea & Botanicals", "order": 3},
+        {"id": "bakery", "name": "Bakery & Small Plates", "order": 4},
+        {"id": "mains", "name": "Artisanal Mains", "order": 5}
     ],
     "menu_items": [
         {
             "id": "c1",
-            "slug": "single-origin-espresso",
+            "slug": "estate-espresso",
             "name": "Estate Espresso",
             "tagline": "Double extraction / Chikmagalur Reserve",
             "category": "coffee",
@@ -85,14 +112,9 @@ SEED_DATA = {
             "image": "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=1000&q=80",
             "is_vegetarian": True,
             "is_vegan": True,
-            "is_gluten_free": True,
             "is_featured": True,
             "available": True,
-            "ingredients": ["100% Arabica washed beans", "Filtered mineral water (90 ppm)"],
-            "notes": "Brew temperature: 93.5°C | Extraction: 27 seconds",
-            "options": [
-                {"name": "Profile", "choices": [{"label": "Standard Double", "price": 0}, {"label": "Ristretto (Dense & syrupy)", "price": 0}, {"label": "Lungo (Bright & lengthened)", "price": 0}]}
-            ]
+            "options": [{"name": "Extraction", "choices": [{"label": "Standard Double", "price": 0}, {"label": "Ristretto", "price": 0}]}]
         },
         {
             "id": "c2",
@@ -101,35 +123,87 @@ SEED_DATA = {
             "tagline": "Micro-textured steam / Honey roast",
             "category": "coffee",
             "price": 220,
-            "description": "Silky micro-foam delicately folded into a concentrated double shot of our medium-roast blend. Balanced, sweet, and comforting.",
+            "description": "Silky micro-foam delicately folded into a concentrated double shot of medium-roast Arabica blend.",
             "image": "https://images.unsplash.com/photo-1577968897966-3d4325b36b61?auto=format&fit=crop&w=1000&q=80",
             "is_vegetarian": True,
             "is_vegan": False,
-            "is_gluten_free": True,
             "is_featured": True,
             "available": True,
-            "ingredients": ["Arabica espresso blend", "Whole milk or choice of oat/almond"],
-            "notes": "Served at silky 60°C drinking temperature.",
-            "options": [
-                {"name": "Milk Choice", "choices": [{"label": "Whole Milk (Standard)", "price": 0}, {"label": "Minor Figures Oat Milk", "price": 40}, {"label": "House Almond Milk", "price": 40}]}
-            ]
+            "options": [{"name": "Milk Choice", "choices": [{"label": "Whole Milk (Standard)", "price": 0}, {"label": "Oat Milk", "price": 40}, {"label": "Almond Milk", "price": 40}]}]
         },
         {
             "id": "c3",
-            "slug": "cold-brew-amber",
+            "slug": "kyoto-cold-brew",
             "name": "18-Hour Kyoto Cold Brew",
             "tagline": "Slow drip / Ethiopian Yirgacheffe",
             "category": "coffee",
             "price": 240,
-            "description": "Slow cold-water dripped over 18 hours drop-by-drop through an architectural Kyoto glass tower. Delicate floral jasmine aromatics and bergamot clarity.",
+            "description": "Slow cold-water dripped over 18 hours drop-by-drop through an architectural Kyoto glass tower.",
             "image": "https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=1000&q=80",
             "is_vegetarian": True,
             "is_vegan": True,
-            "is_gluten_free": True,
             "is_featured": True,
             "available": True,
-            "ingredients": ["Ethiopian Yirgacheffe G1 beans", "Chilled alkaline water"],
-            "notes": "Served over crystal clear hand-cut ice diamond.",
+            "options": []
+        },
+        {
+            "id": "c4",
+            "slug": "single-origin-pourover",
+            "name": "V60 Single-Origin Pourover",
+            "tagline": "Manual filter / Shevaroys Honey Process",
+            "category": "manual_brew",
+            "price": 260,
+            "description": "Delicate notes of stone fruit, white tea, and lemon blossom filtered through Japanese Hario paper cone.",
+            "image": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1000&q=80",
+            "is_vegetarian": True,
+            "is_vegan": True,
+            "is_featured": True,
+            "available": True,
+            "options": []
+        },
+        {
+            "id": "c5",
+            "slug": "aeropress-immersion",
+            "name": "AeroPress Clean Immersion",
+            "tagline": "Inverted immersion / Coorg Washed",
+            "category": "manual_brew",
+            "price": 230,
+            "description": "Full-immersion extraction producing high body, sweetness, and ultra-low acidity.",
+            "image": "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1000&q=80",
+            "is_vegetarian": True,
+            "is_vegan": True,
+            "is_featured": False,
+            "available": True,
+            "options": []
+        },
+        {
+            "id": "t1",
+            "slug": "silver-needle-white-tea",
+            "name": "Silver Needle Spring White Tea",
+            "tagline": "First Flush / Darjeeling Single Estate",
+            "category": "tea",
+            "price": 210,
+            "description": "Plucked early morning before dawn. Unoxidized buds offering silky notes of melon, melon blossom, and clean pine.",
+            "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=1000&q=80",
+            "is_vegetarian": True,
+            "is_vegan": True,
+            "is_featured": True,
+            "available": True,
+            "options": []
+        },
+        {
+            "id": "t2",
+            "slug": "ceremonial-matcha-latte",
+            "name": "Uji Ceremonial Matcha Latte",
+            "tagline": "Stone Ground / Kyoto Harvest",
+            "category": "tea",
+            "price": 280,
+            "description": "First-harvest ceremonial matcha whisked by hand with bamboo chasen and folded into steamed oat milk.",
+            "image": "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=1000&q=80",
+            "is_vegetarian": True,
+            "is_vegan": True,
+            "is_featured": True,
+            "available": True,
             "options": []
         },
         {
@@ -137,206 +211,318 @@ SEED_DATA = {
             "slug": "truffle-scramble-croissant",
             "name": "Black Truffle Croissant",
             "tagline": "Cultured butter / French pasture eggs",
-            "category": "breakfast",
+            "category": "bakery",
             "price": 360,
-            "description": "Twice-baked butter croissant folded with soft creamy pasture-raised eggs, shaved black summer truffle, Parmigiano Reggiano, and micro chives.",
+            "description": "Twice-baked butter croissant folded with soft creamy pasture-raised eggs, shaved black summer truffle, and Parmigiano.",
             "image": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1000&q=80",
             "is_vegetarian": True,
             "is_vegan": False,
-            "is_gluten_free": False,
             "is_featured": True,
             "available": True,
-            "ingredients": ["French cultured butter croissant", "Organic free-range eggs", "Black winter truffle paste", "24-month Parmigiano"],
-            "notes": "Baked in small batches every morning at 6:30 AM.",
             "options": []
         },
         {
             "id": "b2",
-            "slug": "sourdough-avocado-tartine",
-            "name": "Wild Sourdough Avocado Tartine",
-            "tagline": "48h Ferment / Hass Avocado / Dukkah",
-            "category": "brunch",
-            "price": 340,
-            "description": "Thick toasted naturally leavened country sourdough topped with crushed Hass avocado, pickled shallots, Persian feta, toasted Egyptian dukkah, and cold-pressed olive oil.",
-            "image": "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1000&q=80",
+            "slug": "cardamom-pistachio-bun",
+            "name": "Swedish Cardamom Knot",
+            "tagline": "Laminated sourdough / Freshly ground cardamom",
+            "category": "bakery",
+            "price": 190,
+            "description": "Laminated brioche dough knotted with browned butter, raw Demerara sugar, and crushed Kerala green cardamom.",
+            "image": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=1000&q=80",
             "is_vegetarian": True,
             "is_vegan": False,
-            "is_gluten_free": False,
             "is_featured": True,
             "available": True,
-            "ingredients": ["Stone-ground country loaf", "Hass avocado", "Persian feta", "House toasted dukkah", "Cold pressed EVOO"],
-            "notes": "Vegan preparation available without feta upon request.",
             "options": []
         },
         {
             "id": "b3",
-            "slug": "vanilla-bean-ricotta-hotcake",
-            "name": "Whipped Ricotta Hotcake",
-            "tagline": "Cast iron baked / Seasonal berries / Salted maple",
-            "category": "breakfast",
-            "price": 380,
-            "description": "Single-skillet soufflé hotcake loaded with fresh whipped buffalo ricotta, caramelized figs, roasted macadamia crumble, and dark Quebec maple syrup.",
-            "image": "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=1000&q=80",
+            "slug": "sourdough-tartine-avocado",
+            "name": "Avocado & Labneh Tartine",
+            "tagline": "Wild sourdough / Za'atar emulsion",
+            "category": "bakery",
+            "price": 320,
+            "description": "Thick toasted country sourdough rubbed with garlic, layered with strained citrus labneh, Hass avocado, and toasted pistachios.",
+            "image": "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1000&q=80",
             "is_vegetarian": True,
             "is_vegan": False,
-            "is_gluten_free": False,
             "is_featured": False,
             "available": True,
-            "ingredients": ["House made ricotta", "Tahitian vanilla bean", "Macadamia nut crumble", "Pure grade-A maple"],
-            "notes": "Please allow 15 minutes as every hotcake is baked fresh to order.",
             "options": []
         },
         {
             "id": "m1",
-            "slug": "miso-glazed-salmon-bowl",
-            "name": "Miso Cured Salmon Bowl",
-            "tagline": "Forbidden black rice / Edamame / Ponzu",
+            "slug": "wild-mushroom-polenta-bowl",
+            "name": "Braised Forest Mushroom Bowl",
+            "tagline": "Creamy polenta / Porcini thyme jus",
             "category": "mains",
-            "price": 490,
-            "description": "Gently torched sashimi-grade salmon steeped in sweet white miso glaze, served over warm heirloom black rice, shaved cucumber ribbons, avocado, and toasted sesame ponzu.",
+            "price": 420,
+            "description": "Pan-seared king oyster and cremini mushrooms over slow-cooked mascarpone polenta, crispy sage, and shaved Pecorino Romano.",
             "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1000&q=80",
-            "is_vegetarian": False,
+            "is_vegetarian": True,
             "is_vegan": False,
-            "is_gluten_free": True,
             "is_featured": True,
             "available": True,
-            "ingredients": ["Norwegian salmon", "Shiro miso", "Heirloom black rice", "Edamame", "Japanese ponzu"],
-            "notes": "Gluten-free tamari glaze used.",
             "options": []
         },
         {
             "id": "m2",
-            "slug": "wild-mushroom-burrata-tagliatelle",
-            "name": "Forest Mushroom & Handcrafted Burrata",
-            "tagline": "Hand-rolled pasta / Brown butter sage",
+            "slug": "artisan-burrata-panzanella",
+            "name": "Bengaluru Artisanal Burrata",
+            "tagline": "Heirloom tomatoes / Sourdough crisp",
             "category": "mains",
             "price": 460,
-            "description": "Morel, chanterelle, and king oyster mushrooms sauteed in hazelnut brown butter and sage, layered around silk handmade ribbons of egg tagliatelle and a whole torn pugliese burrata.",
-            "image": "https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=1000&q=80",
+            "description": "Locally cultured buffalo milk burrata, charred estate peaches, basil pesto, cold-pressed olive oil, and balsamic caviar.",
+            "image": "https://images.unsplash.com/photo-1592417817098-8f3d6eb22509?auto=format&fit=crop&w=1000&q=80",
             "is_vegetarian": True,
             "is_vegan": False,
-            "is_gluten_free": False,
-            "is_featured": False,
-            "available": True,
-            "ingredients": ["Wild morels & king oysters", "Handcrafted tagliatelle", "Pugliese burrata (125g)", "Cultured butter", "Crisp sage"],
-            "notes": "Pasta rolled fresh twice daily.",
-            "options": []
-        },
-        {
-            "id": "d1",
-            "slug": "valrhona-dark-chocolate-fondant",
-            "name": "70% Valrhona Dark Fondant",
-            "tagline": "Warm molten core / Smoked sea salt gelato",
-            "category": "desserts",
-            "price": 320,
-            "description": "Baked to order single-estate chocolate cake with an oozing liquid ganache interior, accompanied by house-spun Madagascar vanilla gelato with a dusting of smoked Maldon salt.",
-            "image": "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=1000&q=80",
-            "is_vegetarian": True,
-            "is_vegan": False,
-            "is_gluten_free": False,
             "is_featured": True,
             "available": True,
-            "ingredients": ["Valrhona Guanaja 70%", "Madagascar Bourbon vanilla", "Maldon sea salt flake"],
-            "notes": "12 minute baking time. Best enjoyed immediately at table.",
-            "options": []
-        },
-        {
-            "id": "d2",
-            "slug": "pistachio-cardamom-choux",
-            "name": "Bronte Pistachio Paris-Brest",
-            "tagline": "Craquelin choux / Sicilian pistachio praline",
-            "category": "desserts",
-            "price": 290,
-            "description": "Crisp golden choux ring crowned with butter craquelin, piped full of dense roasted Bronte pistachio mousseline and a molten salted pistachio praline heart.",
-            "image": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=1000&q=80",
-            "is_vegetarian": True,
-            "is_vegan": False,
-            "is_gluten_free": False,
-            "is_featured": False,
-            "available": True,
-            "ingredients": ["Sicilian Bronte pistachio paste", "Choux pastry", "Pure butter craquelin", "Cardamom infusion"],
-            "notes": "Contains tree nuts (pistachio).",
-            "options": []
-        },
-        {
-            "id": "t1",
-            "slug": "sparkling-yuzu-matcha",
-            "name": "Sparkling Yuzu Ceremonial Matcha",
-            "tagline": "Uji First Flush / Kochi Yuzu / Tonic",
-            "category": "drinks",
-            "price": 260,
-            "description": "Stone-ground ceremonial Uji matcha whisked tableside and poured over chilled Japanese Kochi yuzu extract, subtle botanical tonic, and shaved ice.",
-            "image": "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=1000&q=80",
-            "is_vegetarian": True,
-            "is_vegan": True,
-            "is_gluten_free": True,
-            "is_featured": True,
-            "available": True,
-            "ingredients": ["Ceremonial Uji matcha (Kyoto)", "Kochi yuzu reduction", "Fever-Tree tonic", "Shaved mineral ice"],
-            "notes": "Whisked with bamboo chasen before service.",
-            "options": []
-        },
-        {
-            "id": "t2",
-            "slug": "smoked-rosemary-cascara-tea",
-            "name": "Smoked Rosemary Cascara Spritz",
-            "tagline": "Coffee cherry tea / Charred rosemary / Botanicals",
-            "category": "drinks",
-            "price": 210,
-            "description": "Brewed from sundried coffee cherry skins (cascara), lightly carbonated with notes of hibiscus, dried tamarind, and cold-smoked rosemary oil.",
-            "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=1000&q=80",
-            "is_vegetarian": True,
-            "is_vegan": True,
-            "is_gluten_free": True,
-            "is_featured": False,
-            "available": True,
-            "ingredients": ["Estate cascara", "House soda", "Charred rosemary oil", "Dehydrated blood orange"],
-            "notes": "Low caffeine botanical elixir.",
             "options": []
         }
     ],
     "tables": [
-        {"id": "T01", "number": "01", "name": "Table 01", "capacity": 2, "section": "Courtyard Solarium", "status": "AVAILABLE", "qr_path": "/qrcode/table-01.png"},
-        {"id": "T02", "number": "02", "name": "Table 02", "capacity": 2, "section": "Courtyard Solarium", "status": "AVAILABLE", "qr_path": "/qrcode/table-02.png"},
-        {"id": "T03", "number": "03", "name": "Table 03", "capacity": 4, "section": "Architectural Library", "status": "AVAILABLE", "qr_path": "/qrcode/table-03.png"},
-        {"id": "T04", "number": "04", "name": "Table 04", "capacity": 4, "section": "Architectural Library", "status": "OCCUPIED", "qr_path": "/qrcode/table-04.png"},
-        {"id": "T05", "number": "05", "name": "Table 05", "capacity": 6, "section": "Main Timber Hall", "status": "AVAILABLE", "qr_path": "/qrcode/table-05.png"},
-        {"id": "T06", "number": "06", "name": "Table 06", "capacity": 2, "section": "Barista Counter", "status": "AVAILABLE", "qr_path": "/qrcode/table-06.png"},
-        {"id": "T07", "number": "07", "name": "Table 07", "capacity": 4, "section": "Garden Terrace", "status": "AVAILABLE", "qr_path": "/qrcode/table-07.png"},
-        {"id": "T08", "number": "08", "name": "Table 08", "capacity": 4, "section": "Mezzanine Lounge", "status": "AVAILABLE", "qr_path": "/qrcode/table-08.png"},
-        {"id": "T99", "number": "Takeaway", "name": "Takeaway Counter", "capacity": 100, "section": "Espresso Bar Pickup", "status": "AVAILABLE", "qr_path": "/qrcode/table-takeaway.png"}
-    ],
-    "orders": [],
-    "reservations": [],
-    "offers": [
-        {"code": "WELCOME10", "discount_percent": 10, "description": "10% off on your first table ritual", "active": True},
-        {"code": "SOLARIUM", "discount_amount": 50, "description": "Flat ₹50 off on breakfast plates above ₹400", "active": True}
-    ],
-    "reviews": [
-        {"id": "r1", "name": "Priya Sen", "rating": 5, "comment": "The Black Truffle Croissant and Kyoto Cold Brew are unmatched in Bengaluru.", "date": "Yesterday"},
-        {"id": "r2", "name": "Karan Singhal", "rating": 5, "comment": "Pure quiet luxury. Seamless table ordering and impeccable coffee extraction.", "date": "3 days ago"}
+        {"id": "T1", "number": "01", "capacity": 2, "section": "Window Solarium", "status": "free", "active_order_id": None},
+        {"id": "T2", "number": "02", "capacity": 2, "section": "Window Solarium", "status": "occupied", "active_order_id": "ORD-101"},
+        {"id": "T3", "number": "03", "capacity": 4, "section": "Espresso Bar", "status": "occupied", "active_order_id": "ORD-102"},
+        {"id": "T4", "number": "04", "capacity": 4, "section": "Courtyard Garden", "status": "free", "active_order_id": None},
+        {"id": "T5", "number": "05", "capacity": 6, "section": "Courtyard Garden", "status": "reserved", "active_order_id": None},
+        {"id": "T6", "number": "06", "capacity": 2, "section": "Library Mezzanine", "status": "needs_cleaning", "active_order_id": None},
+        {"id": "T7", "number": "07", "capacity": 4, "section": "Library Mezzanine", "status": "free", "active_order_id": None},
+        {"id": "T8", "number": "08", "capacity": 8, "section": "Private Tasting Room", "status": "occupied", "active_order_id": "ORD-103"},
+        {"id": "Takeaway", "number": "Takeaway", "capacity": 0, "section": "Express Counter", "status": "free", "active_order_id": None}
     ],
     "users": [
         {
-            "id": "admin",
-            "name": "Staff Operations",
-            "email": "admin@smartcafe.in",
-            "phone": "+91 80 4123 8890",
+            "id": "staff-admin",
+            "username": "admin",
+            "name": "Head of Operations",
+            "mobile": "9999900001",
+            "password_hash": generate_password_hash("admin@123"),
             "role": "admin",
-            "member_since": "January 2024",
-            "loyalty_points": 0
+            "created_at": "2024-01-15T09:00:00"
+        },
+        {
+            "id": "staff-mgr",
+            "username": "manager",
+            "name": "Floor Manager",
+            "mobile": "9999900002",
+            "password_hash": generate_password_hash("manager@123"),
+            "role": "manager",
+            "created_at": "2024-02-01T10:30:00"
+        },
+        {
+            "id": "staff-barista",
+            "username": "barista",
+            "name": "Lead Barista",
+            "mobile": "9999900003",
+            "password_hash": generate_password_hash("staff@123"),
+            "role": "staff",
+            "created_at": "2024-03-10T11:00:00"
+        },
+        {
+            "id": "cust-smit",
+            "name": "Smit Patel",
+            "mobile": "8200878170",
+            "password_hash": generate_password_hash("password123"),
+            "role": "customer",
+            "created_at": "2024-06-12T14:20:00",
+            "orders_count": 5,
+            "total_spend": 2840,
+            "last_visit": "2024-10-31T18:45:00"
+        },
+        {
+            "id": "cust-priya",
+            "name": "Priya Sen",
+            "mobile": "9876543210",
+            "password_hash": generate_password_hash("password123"),
+            "role": "customer",
+            "created_at": "2024-07-20T16:15:00",
+            "orders_count": 3,
+            "total_spend": 1420,
+            "last_visit": "2024-10-30T15:20:00"
+        },
+        {
+            "id": "cust-karan",
+            "name": "Karan Singhal",
+            "mobile": "9845012345",
+            "password_hash": generate_password_hash("password123"),
+            "role": "customer",
+            "created_at": "2024-08-05T12:00:00",
+            "orders_count": 2,
+            "total_spend": 880,
+            "last_visit": "2024-10-28T11:10:00"
+        },
+        {
+            "id": "cust-ananya",
+            "name": "Ananya Rao",
+            "mobile": "9916098765",
+            "password_hash": generate_password_hash("password123"),
+            "role": "customer",
+            "created_at": "2024-09-14T19:30:00",
+            "orders_count": 4,
+            "total_spend": 2150,
+            "last_visit": "2024-10-29T20:15:00"
         }
     ],
-    "loyalty_accounts": [],
-    "favorites": []
+    "orders": [
+        {
+            "id": "ORD-101",
+            "table_number": "02",
+            "table_section": "Window Solarium",
+            "customer_name": "Smit Patel",
+            "customer_mobile": "8200878170",
+            "status": "PREPARING",
+            "items": [
+                {"name": "Estate Espresso", "quantity": 1, "unit_price": 160, "item_total": 160},
+                {"name": "Swedish Cardamom Knot", "quantity": 2, "unit_price": 190, "item_total": 380}
+            ],
+            "subtotal": 540,
+            "tax": 27,
+            "discount": 0,
+            "total": 567,
+            "payment_status": "PAID",
+            "payment_method": "UPI",
+            "notes": "Serve espresso extra hot",
+            "created_at": "2024-10-31T20:42:00",
+            "timeline": [
+                {"status": "PENDING", "time": "2024-10-31T20:42:00", "actor": "Customer"},
+                {"status": "PREPARING", "time": "2024-10-31T20:45:00", "actor": "Barista"}
+            ]
+        },
+        {
+            "id": "ORD-102",
+            "table_number": "03",
+            "table_section": "Espresso Bar",
+            "customer_name": "Priya Sen",
+            "customer_mobile": "9876543210",
+            "status": "PENDING",
+            "items": [
+                {"name": "Velvet Flat White", "quantity": 2, "unit_price": 220, "item_total": 440},
+                {"name": "Black Truffle Croissant", "quantity": 1, "unit_price": 360, "item_total": 360}
+            ],
+            "subtotal": 800,
+            "tax": 40,
+            "discount": 0,
+            "total": 840,
+            "payment_status": "PENDING",
+            "payment_method": "Counter Pay",
+            "notes": "Oat milk for flat whites please",
+            "created_at": "2024-10-31T20:48:00",
+            "timeline": [
+                {"status": "PENDING", "time": "2024-10-31T20:48:00", "actor": "Customer"}
+            ]
+        },
+        {
+            "id": "ORD-103",
+            "table_number": "08",
+            "table_section": "Private Tasting Room",
+            "customer_name": "Ananya Rao",
+            "customer_mobile": "9916098765",
+            "status": "READY",
+            "items": [
+                {"name": "Braised Forest Mushroom Bowl", "quantity": 2, "unit_price": 420, "item_total": 840},
+                {"name": "18-Hour Kyoto Cold Brew", "quantity": 2, "unit_price": 240, "item_total": 480}
+            ],
+            "subtotal": 1320,
+            "tax": 66,
+            "discount": 0,
+            "total": 1386,
+            "payment_status": "PAID",
+            "payment_method": "Card",
+            "notes": "Ready on pass for Table 08",
+            "created_at": "2024-10-31T20:25:00",
+            "timeline": [
+                {"status": "PENDING", "time": "2024-10-31T20:25:00", "actor": "Customer"},
+                {"status": "PREPARING", "time": "2024-10-31T20:28:00", "actor": "Kitchen"},
+                {"status": "READY", "time": "2024-10-31T20:46:00", "actor": "Pass"}
+            ]
+        },
+        {
+            "id": "ORD-100",
+            "table_number": "01",
+            "table_section": "Window Solarium",
+            "customer_name": "Karan Singhal",
+            "customer_mobile": "9845012345",
+            "status": "COMPLETED",
+            "items": [
+                {"name": "V60 Single-Origin Pourover", "quantity": 1, "unit_price": 260, "item_total": 260},
+                {"name": "Swedish Cardamom Knot", "quantity": 1, "unit_price": 190, "item_total": 190}
+            ],
+            "subtotal": 450,
+            "tax": 22.5,
+            "discount": 0,
+            "total": 472.5,
+            "payment_status": "PAID",
+            "payment_method": "UPI",
+            "notes": "",
+            "created_at": "2024-10-31T19:15:00",
+            "timeline": [
+                {"status": "PENDING", "time": "2024-10-31T19:15:00", "actor": "Customer"},
+                {"status": "PREPARING", "time": "2024-10-31T19:18:00", "actor": "Barista"},
+                {"status": "READY", "time": "2024-10-31T19:30:00", "actor": "Pass"},
+                {"status": "COMPLETED", "time": "2024-10-31T20:10:00", "actor": "Staff"}
+            ]
+        }
+    ],
+    "reservations": [
+        {
+            "id": "RES-201",
+            "name": "Dr. Sameer Joshi",
+            "mobile": "9820011223",
+            "party_size": 4,
+            "date": "2024-10-31",
+            "time": "21:00",
+            "zone": "Courtyard Garden",
+            "table_number": "05",
+            "status": "CONFIRMED",
+            "special_notes": "Anniversary celebration, quieter table requested.",
+            "created_at": "2024-10-31T14:00:00"
+        },
+        {
+            "id": "RES-202",
+            "name": "Meera Nambiar",
+            "mobile": "9845099887",
+            "party_size": 2,
+            "date": "2024-10-31",
+            "time": "21:30",
+            "zone": "Window Solarium",
+            "table_number": "01",
+            "status": "CONFIRMED",
+            "special_notes": "High stool or window seat preferred.",
+            "created_at": "2024-10-31T16:30:00"
+        },
+        {
+            "id": "RES-200",
+            "name": "Vikram Seth",
+            "mobile": "9880012345",
+            "party_size": 3,
+            "date": "2024-10-31",
+            "time": "19:00",
+            "zone": "Espresso Bar",
+            "table_number": "03",
+            "status": "SEATED",
+            "special_notes": "Tasting flight consultation.",
+            "created_at": "2024-10-31T12:00:00"
+        }
+    ],
+    "offers": [
+        {"code": "AROMA10", "discount_percent": 10, "description": "10% privilege on boutique brews", "active": True},
+        {"code": "WELCOME50", "discount_amount": 50, "description": "₹50 welcome on first artisanal order", "active": True}
+    ],
+    "reviews": []
 }
 
-class FirestoreManager:
-    """Manages collections across Firebase Firestore or local persistent fallback."""
 
-    def __init__(self):
-        self.local_file = "local_firestore.json"
-        self._data = {}
+class FirestoreManager:
+    """
+    Central database manager supporting local JSON persistence and Firestore SDK.
+    """
+    def __init__(self, local_file=None):
+        if local_file is None:
+            local_file = os.path.join(os.path.dirname(__file__), "local_firestore.json")
+        self.local_file = local_file
         self._load_local_data()
 
     def _load_local_data(self):
@@ -344,396 +530,241 @@ class FirestoreManager:
             try:
                 with open(self.local_file, "r", encoding="utf-8") as f:
                     self._data = json.load(f)
-            except Exception:
-                self._data = json.loads(json.dumps(SEED_DATA))
-                self._save_local_data()
-        else:
-            self._data = json.loads(json.dumps(SEED_DATA))
-            self._save_local_data()
+                    self._run_migrations()
+                    return
+            except Exception as e:
+                logger.error(f"Error loading local store {self.local_file}: {e}")
+        self._data = json.loads(json.dumps(DEFAULT_SEED_DATA))
+        self._save_local_data()
 
     def _save_local_data(self):
         try:
             with open(self.local_file, "w", encoding="utf-8") as f:
-                json.dump(self._data, f, indent=2)
+                json.dump(self._data, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            logger.error(f"Error persisting local firestore: {e}")
+            logger.error(f"Error saving local data: {e}")
 
-    # COLLECTION: menu_items
+    def _run_migrations(self):
+        """
+        Auto-migration on startup:
+        - Ensure password hashing for all users
+        - Strip email fields from customer records and ensure 10-digit mobile exists
+        - Ensure default staff accounts (admin, manager, barista)
+        - Ensure settings key exists
+        """
+        changed = False
+        if "settings" not in self._data:
+            self._data["settings"] = DEFAULT_SEED_DATA["settings"]
+            changed = True
+        
+        # Ensure users array
+        if "users" not in self._data:
+            self._data["users"] = DEFAULT_SEED_DATA["users"]
+            changed = True
+
+        # Check staff accounts
+        usernames = {u.get("username") for u in self._data.get("users", []) if u.get("username")}
+        for default_staff in DEFAULT_SEED_DATA["users"]:
+            if default_staff.get("username") and default_staff["username"] not in usernames:
+                self._data["users"].append(default_staff)
+                changed = True
+
+        # Normalize mobile & passwords for existing users
+        for user in self._data.get("users", []):
+            if "email" in user:
+                del user["email"]
+                changed = True
+            raw_pwd = user.get("password")
+            if raw_pwd and not user.get("password_hash"):
+                user["password_hash"] = generate_password_hash(raw_pwd)
+                del user["password"]
+                changed = True
+            if user.get("mobile"):
+                norm = normalize_mobile(user["mobile"])
+                if norm and norm != user["mobile"]:
+                    user["mobile"] = norm
+                    changed = True
+
+        # Normalize orders: customer_mobile instead of customer_email
+        for order in self._data.get("orders", []):
+            if "customer_email" in order:
+                del order["customer_email"]
+                changed = True
+
+        if changed:
+            self._save_local_data()
+
+    # ── SETTINGS ─────────────────────────────────────────────────────────────
+    def get_settings(self):
+        return self._data.get("settings", DEFAULT_SEED_DATA["settings"])
+
+    def update_settings(self, new_settings: dict):
+        current = self.get_settings()
+        current.update(new_settings)
+        self._data["settings"] = current
+        self._save_local_data()
+        return current
+
+    # ── MENU ─────────────────────────────────────────────────────────────────
+    def get_categories(self):
+        return self._data.get("menu_categories", DEFAULT_SEED_DATA["menu_categories"])
+
     def get_menu_items(self, category=None, search=None, only_available=True):
-        if is_firebase_live:
-            try:
-                col = firestore_client.collection("menu_items")
-                query = col
-                if only_available:
-                    query = query.where("available", "==", True)
-                if category and category != "all":
-                    query = query.where("category", "==", category)
-                docs = query.stream()
-                items = [d.to_dict() for d in docs]
-                if items:
-                    if search:
-                        q = search.lower()
-                        items = [i for i in items if q in i.get("name", "").lower() or q in i.get("description", "").lower()]
-                    return items
-            except Exception as e:
-                logger.error(f"Firestore get_menu_items error: {e}")
-
-        # Local fallback
-        items = list(self._data.get("menu_items", []))
+        items = self._data.get("menu_items", [])
         if only_available:
             items = [i for i in items if i.get("available", True)]
         if category and category != "all":
             items = [i for i in items if i.get("category") == category]
         if search:
-            q = search.lower()
-            items = [i for i in items if q in i.get("name", "").lower() or q in i.get("description", "").lower() or any(q in ing.lower() for ing in i.get("ingredients", []))]
+            q = search.lower().strip()
+            items = [i for i in items if q in i.get("name", "").lower() or q in i.get("description", "").lower() or q in i.get("tagline", "").lower()]
         return items
 
     def get_menu_item_by_id(self, item_id):
-        if is_firebase_live:
-            try:
-                doc = firestore_client.collection("menu_items").document(item_id).get()
-                if doc.exists:
-                    return doc.to_dict()
-            except Exception as e:
-                logger.error(f"Firestore get_menu_item_by_id error: {e}")
-
-        for i in self._data.get("menu_items", []):
-            if i.get("id") == item_id or i.get("slug") == item_id:
-                return i
+        for item in self._data.get("menu_items", []):
+            if item.get("id") == item_id or item.get("slug") == item_id:
+                return item
         return None
 
-    def save_menu_item(self, item_data):
-        item_id = item_data.get("id") or f"m-{int(datetime.now().timestamp())}"
-        item_data["id"] = item_id
-        if is_firebase_live:
-            try:
-                firestore_client.collection("menu_items").document(item_id).set(item_data, merge=True)
-            except Exception as e:
-                logger.error(f"Firestore save_menu_item error: {e}")
-
-        existing = [i for i in self._data.get("menu_items", []) if i.get("id") == item_id]
-        if existing:
-            self._data["menu_items"] = [item_data if i.get("id") == item_id else i for i in self._data.get("menu_items", [])]
+    def save_menu_item(self, item_dict):
+        items = self._data.get("menu_items", [])
+        idx = next((i for i, x in enumerate(items) if x.get("id") == item_dict.get("id")), -1)
+        if idx >= 0:
+            items[idx].update(item_dict)
         else:
-            self._data.setdefault("menu_items", []).append(item_data)
+            items.append(item_dict)
+        self._data["menu_items"] = items
         self._save_local_data()
-        return item_data
+        return item_dict
+
+    def toggle_menu_item_86(self, item_id, available=None):
+        item = self.get_menu_item_by_id(item_id)
+        if not item:
+            return None
+        if available is None:
+            item["available"] = not item.get("available", True)
+        else:
+            item["available"] = bool(available)
+        self._save_local_data()
+        return item
+
+    def bulk_toggle_menu(self, available: bool):
+        for item in self._data.get("menu_items", []):
+            item["available"] = available
+        self._save_local_data()
+        return len(self._data.get("menu_items", []))
 
     def delete_menu_item(self, item_id):
-        if is_firebase_live:
-            try:
-                firestore_client.collection("menu_items").document(item_id).delete()
-            except Exception as e:
-                logger.error(f"Firestore delete_menu_item error: {e}")
+        items = self._data.get("menu_items", [])
+        initial_len = len(items)
+        items = [i for i in items if i.get("id") != item_id]
+        if len(items) != initial_len:
+            self._data["menu_items"] = items
+            self._save_local_data()
+            return True
+        return False
 
-        self._data["menu_items"] = [i for i in self._data.get("menu_items", []) if i.get("id") != item_id]
-        self._save_local_data()
-        return True
-
-    # COLLECTION: menu_categories
-    def get_categories(self):
-        if is_firebase_live:
-            try:
-                docs = firestore_client.collection("menu_categories").order_by("order").stream()
-                cats = [d.to_dict() for d in docs]
-                if cats:
-                    return cats
-            except Exception:
-                pass
-        return self._data.get("menu_categories", [])
-
-    # COLLECTION: tables
+    # ── TABLES ───────────────────────────────────────────────────────────────
     def get_tables(self):
-        if is_firebase_live:
-            try:
-                docs = firestore_client.collection("tables").stream()
-                tables = [d.to_dict() for d in docs]
-                if tables:
-                    return tables
-            except Exception:
-                pass
-        return self._data.get("tables", [])
+        return self._data.get("tables", DEFAULT_SEED_DATA["tables"])
 
     def get_table_by_number(self, table_number):
-        if not table_number:
-            return None
-        raw = str(table_number).strip().lower()
-        cleaned = raw.replace("table", "").replace("-", "").strip()
         for t in self.get_tables():
-            t_num = str(t.get("number")).strip().lower()
-            if t_num == raw or t_num == cleaned:
-                return t
-            if t_num.isdigit() and cleaned.isdigit() and int(t_num) == int(cleaned):
-                return t
-            if str(t.get("id")).lower() == raw or str(t.get("id")).lower() == f"t{cleaned}":
+            if str(t.get("number")).lower() == str(table_number).lower() or str(t.get("id")).lower() == str(table_number).lower():
                 return t
         return None
 
-    # COLLECTION: orders
+    def update_table_status(self, table_number, status, active_order_id=None):
+        for t in self._data.get("tables", []):
+            if str(t.get("number")).lower() == str(table_number).lower() or str(t.get("id")).lower() == str(table_number).lower():
+                t["status"] = status
+                if active_order_id is not None:
+                    t["active_order_id"] = active_order_id
+                elif status == "free":
+                    t["active_order_id"] = None
+                self._save_local_data()
+                return t
+        return None
+
+    # ── ORDERS ───────────────────────────────────────────────────────────────
+    def get_orders(self):
+        orders = self._data.get("orders", [])
+        # Return sorted by created_at desc
+        return sorted(orders, key=lambda o: o.get("created_at", ""), reverse=True)
+
+    def get_order_by_id(self, order_id):
+        for o in self._data.get("orders", []):
+            if o.get("id") == order_id or str(o.get("order_id")) == str(order_id):
+                return o
+        return None
+
     def create_order(self, order_dict):
-        order_id = order_dict.get("id") or f"SC-{int(datetime.now().timestamp() * 1000) % 10000:04d}"
-        order_dict["id"] = order_id
-        order_dict["created_at"] = order_dict.get("created_at") or datetime.now().isoformat()
+        if "id" not in order_dict:
+            order_dict["id"] = f"ORD-{len(self._data.get('orders', [])) + 101}"
+        if "created_at" not in order_dict:
+            order_dict["created_at"] = datetime.now().isoformat()
+        if "timeline" not in order_dict:
+            order_dict["timeline"] = [
+                {"status": order_dict.get("status", "PENDING"), "time": order_dict["created_at"], "actor": "Customer"}
+            ]
+        self._data.setdefault("orders", []).append(order_dict)
 
-        if is_firebase_live:
-            try:
-                firestore_client.collection("orders").document(order_id).set(order_dict)
-                logger.info("[Firestore] Order document successfully created: orders/%s", order_id)
-            except Exception as e:
-                logger.error("[Firestore] create_order write failed for %s: %s", order_id, e)
+        # Update table status
+        tbl = order_dict.get("table_number")
+        if tbl and str(tbl).lower() != "takeaway":
+            self.update_table_status(tbl, "occupied", active_order_id=order_dict["id"])
 
-        self._data.setdefault("orders", []).insert(0, order_dict)
+        # Update customer spend
+        cust_mobile = order_dict.get("customer_mobile")
+        if cust_mobile:
+            user = self.get_user_by_mobile(cust_mobile)
+            if user:
+                user["orders_count"] = user.get("orders_count", 0) + 1
+                user["total_spend"] = user.get("total_spend", 0) + float(order_dict.get("total", 0))
+                user["last_visit"] = order_dict["created_at"]
+
         self._save_local_data()
         return order_dict
 
-    def get_orders(self, customer_email=None):
-        if is_firebase_live:
-            try:
-                query = firestore_client.collection("orders")
-                if customer_email:
-                    query = query.where("customer_email", "==", customer_email.lower())
-                docs = list(query.order_by("created_at", direction=firestore.Query.DESCENDING).stream())
-                if docs:
-                    orders = []
-                    for d in docs:
-                        data = d.to_dict()
-                        # Always attach the Firestore document ID so update calls can find it
-                        data["doc_id"] = d.id
-                        # Ensure 'id' field is populated (may differ from doc_id if stored separately)
-                        if not data.get("id"):
-                            data["id"] = data.get("orderNumber") or d.id
-                        orders.append(data)
-                    return orders
-            except Exception as e:
-                logger.error(f"Firestore get_orders error: {e}")
-
-        orders = self._data.get("orders", [])
-        if customer_email:
-            orders = [o for o in orders if o.get("customer_email", "").lower() == customer_email.lower()]
-        return orders
-
-    def _resolve_order_doc(self, order_id):
-        """Return (firestore_doc_snapshot, dict) for an order by searching:
-        1. Direct document ID match (fast path)
-        2. Field query on 'id' field (covers SC-XXXX stored as field)
-        3. Field query on 'orderNumber' field (legacy field name)
-        Returns (doc_snapshot, None) or (None, None) if not found."""
-        if not is_firebase_live:
-            return None, None
-        collection = firestore_client.collection("orders")
-        # 1. Direct document lookup
-        try:
-            doc = collection.document(order_id).get()
-            if doc.exists:
-                data = doc.to_dict()
-                data["doc_id"] = doc.id
-                if not data.get("id"):
-                    data["id"] = doc.id
-                return doc, data
-        except Exception as e:
-            logger.warning(f"[Firestore] Direct doc lookup failed for order '{order_id}': {e}")
-
-        # 2. Field query on 'id'
-        try:
-            docs = list(collection.where("id", "==", order_id).limit(1).stream())
-            if docs:
-                doc = docs[0]
-                data = doc.to_dict()
-                data["doc_id"] = doc.id
-                if not data.get("id"):
-                    data["id"] = order_id
-                return doc, data
-        except Exception as e:
-            logger.warning(f"[Firestore] Field query on 'id' failed for order '{order_id}': {e}")
-
-        # 3. Field query on 'orderNumber'
-        try:
-            docs = list(collection.where("orderNumber", "==", order_id).limit(1).stream())
-            if docs:
-                doc = docs[0]
-                data = doc.to_dict()
-                data["doc_id"] = doc.id
-                if not data.get("id"):
-                    data["id"] = order_id
-                return doc, data
-        except Exception as e:
-            logger.warning(f"[Firestore] Field query on 'orderNumber' failed for order '{order_id}': {e}")
-
-        return None, None
-
-    def get_order_by_id(self, order_id):
-        if is_firebase_live:
-            try:
-                doc, data = self._resolve_order_doc(order_id)
-                if data:
-                    return data
-            except Exception as e:
-                logger.error(f"Firestore get_order_by_id error: {e}")
-
+    def update_order_status(self, order_id, status, notes=None, actor="Staff"):
         for o in self._data.get("orders", []):
-            if o.get("id") == order_id or o.get("doc_id") == order_id:
-                return o
-        return None
-
-    def update_order_status(self, order_id, status, payment_status=None):
-        if is_firebase_live:
-            try:
-                updates = {"status": status}
-                if payment_status:
-                    updates["payment_status"] = payment_status
-
-                doc, data = self._resolve_order_doc(order_id)
-                if doc:
-                    doc.reference.update(updates)
-                    logger.info(f"[Firestore] Order '{order_id}' (doc: {doc.id}) status updated to {status}")
-                    # Return the updated order dict immediately (Vercel has no local store)
-                    data.update(updates)
-                    return data
-                else:
-                    logger.error(f"[Firestore] update_order_status: no document found for order_id='{order_id}'")
-            except Exception as e:
-                logger.error(f"Firestore update_order_status error: {e}")
-
-        # Local store fallback (dev / non-Firestore mode)
-        for o in self._data.get("orders", []):
-            if o.get("id") == order_id or o.get("doc_id") == order_id:
+            if o.get("id") == order_id:
                 o["status"] = status
-                if payment_status:
-                    o["payment_status"] = payment_status
+                now_str = datetime.now().isoformat()
+                timeline = o.setdefault("timeline", [])
+                timeline.append({"status": status, "time": now_str, "actor": actor, "notes": notes or ""})
+                
+                # Table status sync on complete/cancel
+                if status in ("COMPLETED", "CANCELLED"):
+                    tbl = o.get("table_number")
+                    if tbl and str(tbl).lower() != "takeaway":
+                        self.update_table_status(tbl, "free", active_order_id=None)
                 self._save_local_data()
                 return o
         return None
 
-    # COLLECTION: reservations
-    def create_reservation(self, res_data):
-        res_id = res_data.get("id") or f"RES-{int(datetime.now().timestamp() * 1000) % 10000:04d}"
-        res_data["id"] = res_id
-        res_data["created_at"] = res_data.get("created_at") or datetime.now().isoformat()
-        res_data["status"] = res_data.get("status") or "CONFIRMED"
+    # ── RESERVATIONS ─────────────────────────────────────────────────────────
+    def get_reservations(self):
+        return sorted(self._data.get("reservations", []), key=lambda r: (r.get("date", ""), r.get("time", "")), reverse=True)
 
-        if is_firebase_live:
-            try:
-                firestore_client.collection("reservations").document(res_id).set(res_data)
-                logger.info("[Firestore] Reservation document successfully created: reservations/%s", res_id)
-            except Exception as e:
-                logger.error("[Firestore] create_reservation write failed for %s: %s", res_id, e)
-
-        self._data.setdefault("reservations", []).insert(0, res_data)
-        self._save_local_data()
-        return res_data
-
-    def get_reservations(self, customer_email=None):
-        if is_firebase_live:
-            try:
-                query = firestore_client.collection("reservations")
-                if customer_email:
-                    query = query.where("email", "==", customer_email.lower())
-                docs = query.order_by("created_at", direction=firestore.Query.DESCENDING).stream()
-                res = [d.to_dict() for d in docs]
-                if res:
-                    return res
-            except Exception as e:
-                logger.error(f"Firestore get_reservations error: {e}")
-
-        res = self._data.get("reservations", [])
-        if customer_email:
-            res = [r for r in res if r.get("email", "").lower() == customer_email.lower()]
-        return res
-
-    # COLLECTION: offers
-    def get_offers(self):
-        return [o for o in self._data.get("offers", []) if o.get("active", True)]
-
-    def get_offer_by_code(self, code):
-        for o in self.get_offers():
-            if o.get("code", "").upper() == code.upper():
-                return o
+    def get_reservation_by_id(self, res_id):
+        for r in self._data.get("reservations", []):
+            if r.get("id") == res_id:
+                return r
         return None
 
-    # COLLECTION: reviews
-    def get_reviews(self):
-        return self._data.get("reviews", [])
-
-    def add_review(self, review_data):
-        review_data["id"] = f"r-{int(datetime.now().timestamp())}"
-        self._data.setdefault("reviews", []).insert(0, review_data)
+    def create_reservation(self, res_dict):
+        if "id" not in res_dict:
+            res_dict["id"] = f"RES-{len(self._data.get('reservations', [])) + 201}"
+        if "created_at" not in res_dict:
+            res_dict["created_at"] = datetime.now().isoformat()
+        if "status" not in res_dict:
+            res_dict["status"] = "CONFIRMED"
+        self._data.setdefault("reservations", []).append(res_dict)
         self._save_local_data()
-        return review_data
-
-    # COLLECTION: users
-    def get_user_by_email(self, email):
-        clean = email.strip().lower()
-        if is_firebase_live:
-            try:
-                docs = firestore_client.collection("users").where("email", "==", clean).limit(1).stream()
-                for d in docs:
-                    return d.to_dict()
-            except Exception as e:
-                logger.error(f"[Firestore] get_user_by_email error: {e}")
-
-        for u in self._data.get("users", []):
-            if u.get("email", "").lower() == clean:
-                return u
-        return None
-
-    def get_users(self):
-        if is_firebase_live:
-            try:
-                docs = firestore_client.collection("users").stream()
-                user_list = [d.to_dict() for d in docs]
-                if user_list:
-                    return user_list
-            except Exception as e:
-                logger.error(f"[Firestore] get_users error: {e}")
-        return self._data.get("users", [])
-
-    def create_or_update_user(self, user_dict):
-        clean = user_dict.get("email", "").strip().lower()
-        user_dict["email"] = clean
-        uid = user_dict.get("firebase_uid") or user_dict.get("id") or clean
-
-        if is_firebase_live:
-            try:
-                doc_ref = firestore_client.collection("users").document(uid)
-                doc_ref.set(user_dict, merge=True)
-                logger.info("[Firestore] User document created/merged: %s", uid)
-            except Exception as e:
-                logger.error(f"[Firestore] create_or_update_user error: {e}")
-
-        existing = [u for u in self._data.get("users", []) if u.get("email", "").lower() == clean]
-        if existing:
-            self._data["users"] = [user_dict if u.get("email", "").lower() == clean else u for u in self._data.get("users", [])]
-        else:
-            self._data.setdefault("users", []).append(user_dict)
-        self._save_local_data()
-        return user_dict
-
-    def update_table_status(self, table_number, status):
-        clean_num = str(table_number).strip().lower()
-        if is_firebase_live:
-            try:
-                tables_ref = firestore_client.collection("tables")
-                docs = tables_ref.where("number", "==", str(table_number)).stream()
-                for d in docs:
-                    d.reference.update({"status": status})
-            except Exception as e:
-                logger.error(f"[Firestore] update_table_status error: {e}")
-
-        for t in self._data.get("tables", []):
-            if str(t.get("number")).strip().lower() == clean_num:
-                t["status"] = status
-                self._save_local_data()
-                return t
-        return None
+        return res_dict
 
     def update_reservation_status(self, res_id, status):
-        if is_firebase_live:
-            try:
-                firestore_client.collection("reservations").document(res_id).update({"status": status})
-            except Exception as e:
-                logger.error(f"[Firestore] update_reservation_status error: {e}")
-
         for r in self._data.get("reservations", []):
             if r.get("id") == res_id:
                 r["status"] = status
@@ -741,7 +772,161 @@ class FirestoreManager:
                 return r
         return None
 
+    # ── USERS & AUTH ─────────────────────────────────────────────────────────
+    def get_users(self):
+        return self._data.get("users", [])
+
+    def get_user_by_mobile(self, mobile):
+        norm = normalize_mobile(mobile)
+        if not norm:
+            return None
+        for u in self._data.get("users", []):
+            if u.get("mobile") == norm:
+                return u
+        return None
+
+    def get_user_by_username(self, username):
+        u_clean = str(username).strip().lower()
+        for u in self._data.get("users", []):
+            if u.get("username", "").strip().lower() == u_clean:
+                return u
+        return None
+
+    def create_customer(self, name: str, mobile: str, password: str):
+        norm = normalize_mobile(mobile)
+        if not norm:
+            raise ValueError("Invalid Indian mobile number. Must be 10 digits starting with 6-9.")
+        if len(name.strip()) < 2:
+            raise ValueError("Full Name must be at least 2 characters.")
+        if len(password) < 8:
+            raise ValueError("Password must be at least 8 characters.")
+
+        if self.get_user_by_mobile(norm):
+            raise ValueError("An account with this mobile number already exists. Please sign in.")
+
+        user = {
+            "id": f"cust-{datetime.now().strftime('%y%m%d%H%M%S')}",
+            "name": name.strip(),
+            "mobile": norm,
+            "password_hash": generate_password_hash(password),
+            "role": "customer",
+            "created_at": datetime.now().isoformat(),
+            "orders_count": 0,
+            "total_spend": 0,
+            "last_visit": datetime.now().isoformat()
+        }
+        self._data.setdefault("users", []).append(user)
+        self._save_local_data()
+        return user
+
+    def verify_customer(self, mobile: str, password: str):
+        norm = normalize_mobile(mobile)
+        if not norm:
+            return None
+        user = self.get_user_by_mobile(norm)
+        if not user:
+            return None
+        if check_password_hash(user.get("password_hash", ""), password):
+            return user
+        return None
+
+    def verify_staff(self, identifier: str, password: str):
+        """
+        Verify staff login by username or mobile.
+        """
+        clean_id = str(identifier).strip().lower()
+        user = None
+        for u in self._data.get("users", []):
+            if u.get("role") in ("admin", "manager", "staff"):
+                if u.get("username", "").lower() == clean_id or u.get("mobile") == clean_id:
+                    user = u
+                    break
+        if not user:
+            return None
+        if check_password_hash(user.get("password_hash", ""), password):
+            return user
+        return None
+
+    def reset_customer_password(self, mobile: str, new_password: str):
+        norm = normalize_mobile(mobile)
+        user = self.get_user_by_mobile(norm)
+        if not user:
+            raise ValueError("No account found with this mobile number.")
+        if len(new_password) < 8:
+            raise ValueError("New password must be at least 8 characters.")
+        user["password_hash"] = generate_password_hash(new_password)
+        self._save_local_data()
+        return user
+
+    def add_staff_account(self, username, name, mobile, password, role="staff"):
+        clean_u = str(username).strip().lower()
+        if self.get_user_by_username(clean_u):
+            raise ValueError("Username already exists.")
+        norm = normalize_mobile(mobile) if mobile else f"99999{len(self.get_users()):05d}"
+        user = {
+            "id": f"staff-{datetime.now().strftime('%y%m%d%H%M%S')}",
+            "username": clean_u,
+            "name": name.strip(),
+            "mobile": norm,
+            "password_hash": generate_password_hash(password),
+            "role": role if role in ("admin", "manager", "staff") else "staff",
+            "created_at": datetime.now().isoformat()
+        }
+        self._data.setdefault("users", []).append(user)
+        self._save_local_data()
+        return user
+
+    def delete_staff_account(self, staff_id):
+        users = self._data.get("users", [])
+        # Prevent deleting the master admin
+        for u in users:
+            if u.get("id") == staff_id or u.get("username") == staff_id:
+                if u.get("username") == "admin":
+                    raise ValueError("Cannot delete master admin account.")
+        new_users = [u for u in users if u.get("id") != staff_id and u.get("username") != staff_id]
+        if len(new_users) != len(users):
+            self._data["users"] = new_users
+            self._save_local_data()
+            return True
+        return False
+
+    def get_customers_aggregated(self):
+        """
+        Returns all customer profiles enriched with dynamic order stats.
+        """
+        customers = [u for u in self._data.get("users", []) if u.get("role") == "customer"]
+        orders = self.get_orders()
+        for c in customers:
+            c_mobile = c.get("mobile")
+            c_orders = [o for o in orders if o.get("customer_mobile") == c_mobile and o.get("status") != "CANCELLED"]
+            c["order_count"] = len(c_orders)
+            c["total_spend"] = sum(float(o.get("total", 0)) for o in c_orders)
+            if c_orders:
+                c["last_visit"] = c_orders[0].get("created_at")
+            elif "last_visit" not in c:
+                c["last_visit"] = c.get("created_at")
+        return customers
+
+    # ── OFFERS & REVIEWS ──────────────────────────────────────────────────────
+    def get_offers(self):
+        return self._data.get("offers", DEFAULT_SEED_DATA["offers"])
+
+    def get_offer_by_code(self, code):
+        for o in self.get_offers():
+            if o.get("code", "").upper() == str(code).upper() and o.get("active", True):
+                return o
+        return None
+
+    def get_reviews(self):
+        return self._data.get("reviews", [])
+
+    def add_review(self, review_dict):
+        review_dict["id"] = f"REV-{len(self._data.get('reviews', [])) + 1}"
+        review_dict["created_at"] = datetime.now().isoformat()
+        self._data.setdefault("reviews", []).append(review_dict)
+        self._save_local_data()
+        return review_dict
 
 
-# Global Firestore Manager instance
+# Global Singleton Database Manager
 db_manager = FirestoreManager()

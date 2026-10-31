@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Scan Table QR — SmartCafe Bengaluru{% endblock %}
+{% block title %}Scan Table QR — Aroma Cafe Bengaluru{% endblock %}
 
 {% block content %}
 <main style="background-color: #171716; color: var(--color-cream); min-height: 90vh; display: flex; align-items: center; justify-content: center; padding: 120px 20px 80px;">
@@ -9,13 +9,13 @@
     <!-- Top Editorial Header -->
     <div style="margin-bottom: 24px;">
       <span style="font-family: var(--font-serif); font-size: 1.25rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-accent-bronze); display: block; margin-bottom: 8px;">
-        SMARTCAFE
+        AROMA CAFE
       </span>
       <h1 style="font-family: var(--font-serif); font-size: clamp(2.2rem, 5vw, 3rem); margin: 0 0 10px; color: var(--color-cream); font-weight: 400; line-height: 1.15;">
         Scan your table QR
       </h1>
       <p id="pageScannerStatus" style="font-size: var(--text-sm); color: var(--color-text-on-dark-muted); line-height: 1.5; margin: 0 auto; max-width: 320px;">
-        Point your camera at the QR code on your SmartCafe table.
+        Point your camera at the QR code on your Aroma Cafe table.
       </p>
     </div>
 
@@ -38,7 +38,7 @@
         <div class="scanner-success-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 26px; height: 26px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
         </div>
-        <span id="pageScannerSuccessNumber" class="scanner-success-title">TABLE 03 DETECTED</span>
+        <span id="pageScannerSuccessNumber" class="scanner-success-title">TABLE DETECTED</span>
         <p class="scanner-success-sub">Directing to Tasting Menu...</p>
       </div>
 
@@ -125,11 +125,11 @@
           const tableId = extractTableId(decodedText);
           if (!tableId) {
             if (statusEl) {
-              statusEl.textContent = "This QR code isn't a SmartCafe table QR.";
+              statusEl.textContent = "This QR code isn't an Aroma Cafe table QR.";
               statusEl.style.color = "#FCD34D";
               setTimeout(() => {
                 if (!pageIsProcessing && statusEl) {
-                  statusEl.textContent = "Point your camera at the QR code on your SmartCafe table.";
+                  statusEl.textContent = "Point your camera at the QR code on your Aroma Cafe table.";
                   statusEl.style.color = "";
                 }
               }, 3000);
