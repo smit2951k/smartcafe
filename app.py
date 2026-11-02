@@ -920,6 +920,20 @@ def api_menu_item(item_id):
 def api_tables():
     return jsonify({"success": True, "tables": db_manager.get_tables()})
 
+
+@app.route("/api/table/active", methods=["GET"])
+def api_active_table():
+    """Return the table assigned to the current browser session, if any."""
+    table_number = session.get("table_number") or session.get("table_id")
+    if not table_number:
+        return jsonify({"success": True, "active": False, "table_number": None})
+    return jsonify({
+        "success": True,
+        "active": True,
+        "table_number": str(table_number)
+    })
+
+
 @app.route("/api/table/validate/<table_id>", methods=["GET"])
 def api_validate_table(table_id):
     table = db_manager.get_table_by_number(table_id)
