@@ -905,8 +905,13 @@ class FirestoreManager:
 
     def get_table_by_number(self, table_number):
         tbl_str = str(table_number).strip().lower()
+        tbl_digits = tbl_str.lstrip("t").lstrip("0")
         for t in self.get_tables():
-            if str(t.get("number", "")).lower() == tbl_str or str(t.get("id", "")).lower() == tbl_str:
+            t_num = str(t.get("number", "")).strip().lower()
+            t_id = str(t.get("id", "")).strip().lower()
+            if t_num == tbl_str or t_id == tbl_str:
+                return t
+            if tbl_digits and (t_num.lstrip("t").lstrip("0") == tbl_digits or t_id.lstrip("t").lstrip("0") == tbl_digits):
                 return t
         return None
 

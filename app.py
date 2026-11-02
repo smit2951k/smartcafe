@@ -210,12 +210,37 @@ def scan_table():
 
 @app.route("/table/<table_id>")
 def table_landing(table_id):
-    table = db_manager.get_table_by_number(table_id)
+    clean_id = str(table_id).zfill(2) if str(table_id).isdigit() and len(str(table_id)) == 1 else str(table_id)
+    table = db_manager.get_table_by_number(clean_id) or db_manager.get_table_by_number(table_id)
     if not table:
         return render_template("table_not_found.html", attempted_id=table_id), 404
+
+    prev_table = session.get("table_number") or session.get("table_id")
+    table_changed = bool(prev_table and str(prev_table) != str(table["number"]))
+
+    # Check reservation discrepancy if user has active/matching reservation
+    reservation_note = None
+    customer = session.get("customer") or {}
+    c_mobile = customer.get("mobile") or session.get("customer_mobile")
+    c_email = customer.get("email") or session.get("customer_email") or session.get("user_email")
+    for r in reversed(db_manager.get_reservations()):
+        r_mob = r.get("mobile") or r.get("phone")
+        r_em = r.get("email")
+        if (c_mobile and r_mob == c_mobile) or (c_email and r_em == c_email):
+            room = r.get("special_request") or r.get("room")
+            if room and room.lower() not in table.get("section", "").lower():
+                reservation_note = f"Note: Your booked reservation is for {room}"
+            break
+
     session["table_number"] = table["number"]
     session["table_id"] = table["number"]
-    return render_template("table_detected.html", table=table)
+    return render_template(
+        "table_detected.html",
+        table=table,
+        table_changed=table_changed,
+        previous_table=prev_table,
+        reservation_note=reservation_note,
+    )
 
 @app.route("/cart")
 def cart():
@@ -728,31 +753,35 @@ def api_admin_update_table_status(table_number):
 @require_staff(allowed_roles=["admin", "manager", "staff"])
 def api_admin_table_qrcode(table_number):
     """
-    Dynamically generates or serves table QR code PNG.
+    Dynamically generates crisp table QR code PNG with fallback to static pre-rendered file.
     """
     clean_num = str(table_number).zfill(2) if str(table_number).isdigit() else str(table_number)
     qr_filename = f"table-{clean_num}.png"
     qr_dir = os.path.join(os.path.dirname(__file__), "qrcode")
 
-    file_path = os.path.join(qr_dir, qr_filename)
-    if os.path.exists(file_path):
-        return send_file(file_path, mimetype="image/png", as_attachment=False, download_name=qr_filename)
-
-    # Dynamically generate with qrcode library if not pre-rendered
+    # Generate dynamically to match current domain / host
     try:
         import qrcode
         base_url = request.host_url.rstrip('/')
         target_url = f"{base_url}/table/{clean_num}"
-        qr = qrcode.QRCode(box_size=10, border=3)
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=10,
+            border=4,
+        )
         qr.add_data(target_url)
         qr.make(fit=True)
-        img = qr.make_image(fill_color="#121110", back_color="#FFFFFF")
+        img = qr.make_image(fill_color="#171716", back_color="#FFFFFF")
         buf = io.BytesIO()
         img.save(buf, format="PNG")
         buf.seek(0)
         return send_file(buf, mimetype="image/png", as_attachment=False, download_name=qr_filename)
     except Exception as e:
-        logger.error("QR generation error: %s", e)
+        logger.warning("Dynamic QR generation failed, attempting static file fallback: %s", e)
+        file_path = os.path.join(qr_dir, qr_filename)
+        if os.path.exists(file_path):
+            return send_file(file_path, mimetype="image/png", as_attachment=False, download_name=qr_filename)
         return jsonify({"error": "QR code unavailable."}), 500
 
 
@@ -920,28 +949,50 @@ def api_menu_item(item_id):
 def api_tables():
     return jsonify({"success": True, "tables": db_manager.get_tables()})
 
-
 @app.route("/api/table/active", methods=["GET"])
 def api_active_table():
     """Return the table assigned to the current browser session, if any."""
     table_number = session.get("table_number") or session.get("table_id")
     if not table_number:
-        return jsonify({"success": True, "active": False, "table_number": None})
+        return jsonify({"success": True, "active": False, "table_number": None, "table_id": None})
     return jsonify({
         "success": True,
         "active": True,
-        "table_number": str(table_number)
+        "table_number": str(table_number),
+        "table_id": str(table_number)
     })
 
 
-@app.route("/api/table/validate/<table_id>", methods=["GET"])
+@app.route("/api/table/validate/<table_id>", methods=["GET", "POST"])
 def api_validate_table(table_id):
-    table = db_manager.get_table_by_number(table_id)
+    clean_id = str(table_id).zfill(2) if str(table_id).isdigit() and len(str(table_id)) == 1 else str(table_id)
+    table = db_manager.get_table_by_number(clean_id) or db_manager.get_table_by_number(table_id)
     if not table:
-        return jsonify({"valid": False, "error": "Table does not exist."}), 404
-    session["table_number"] = table["number"]
-    session["table_id"] = table["number"]
-    return jsonify({"valid": True, "table": table})
+        return jsonify({"success": False, "valid": False, "error": "Table not found."}), 404
+    
+    table_num = str(table.get("number", clean_id))
+    session["table_number"] = table_num
+    session["table_id"] = table_num
+    return jsonify({
+        "success": True,
+        "valid": True,
+        "table_id": table_num,
+        "table_number": table_num,
+        "name": table.get("section", f"Table {table_num}"),
+        "table": table
+    })
+
+@app.route("/api/cart/sync", methods=["POST"])
+def api_cart_sync():
+    data = request.get_json() or {}
+    items = data.get("items", [])
+    session["cart"] = items
+    return jsonify({"success": True, "items": items})
+
+@app.route("/api/cart", methods=["GET"])
+def api_cart_get():
+    items = session.get("cart", [])
+    return jsonify({"success": True, "items": items})
 
 @app.route("/api/cart/calculate", methods=["POST"])
 def api_cart_calculate():
@@ -962,7 +1013,7 @@ def api_orders():
         promo_code = data.get("promo_code")
         totals = calculate_order_totals(client_items, promo_code)
 
-        table_candidate = session.get("table_id") or session.get("table_number") or data.get("table_number") or "Takeaway"
+        table_candidate = data.get("table_id") or data.get("table_number") or session.get("table_id") or session.get("table_number") or "Takeaway"
         valid_table = db_manager.get_table_by_number(table_candidate)
         table_number = valid_table.get("number") if valid_table else "Takeaway"
         table_section = valid_table.get("section") if valid_table else "General"
@@ -975,6 +1026,7 @@ def api_orders():
         order_dict = {
             "id": order_id,
             "table_number": str(table_number),
+            "table_id": str(table_number),
             "table_section": table_section,
             "customer_name": customer_name,
             "customer_mobile": customer_mobile,
