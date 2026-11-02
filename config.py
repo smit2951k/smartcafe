@@ -14,7 +14,10 @@ class Config:
 
     # Firebase Admin SDK configuration
     FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "smart-cafe-6514f")
-    FIREBASE_PRIVATE_KEY = os.getenv("FIREBASE_PRIVATE_KEY", "").replace("\\n", "\n")
+    raw_pk = os.getenv("FIREBASE_PRIVATE_KEY", "")
+    if (raw_pk.startswith('"') and raw_pk.endswith('"')) or (raw_pk.startswith("'") and raw_pk.endswith("'")):
+        raw_pk = raw_pk[1:-1]
+    FIREBASE_PRIVATE_KEY = raw_pk.replace("\\n", "\n")
     FIREBASE_CLIENT_EMAIL = os.getenv("FIREBASE_CLIENT_EMAIL", "firebase-adminsdk-fbsvc@smart-cafe-6514f.iam.gserviceaccount.com")
     FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH", "smart-cafe-6514f-firebase-adminsdk-fbsvc-b95660154d.json")
     FIREBASE_STORAGE_BUCKET = os.getenv("FIREBASE_STORAGE_BUCKET", "smart-cafe-6514f.firebasestorage.app")

@@ -406,13 +406,20 @@ def api_auth_forgot_send_otp():
     # except Exception as sms_err:
     #     logger.error("SMS dispatch failure: %s", sms_err)
     # =========================================================================
-    logger.info("[SMS Stub Provider] Dispatched OTP code '%s' to mobile +91-%s", stub_code, norm)
-
-    return jsonify({
-        "success": True,
-        "message": f"Verification code sent to +91 {norm[:2]}******{norm[-2:]}.",
-        "stub_otp": stub_code  # Exposed in dev/stub mode so testers can verify immediately
-    })
+    is_prod = bool(os.environ.get("VERCEL") or not app.config.get("DEBUG"))
+    if is_prod:
+        logger.info("[SMS Provider] Dispatched verification code to mobile +91-%s", norm[:2] + "******" + norm[-2:])
+        return jsonify({
+            "success": True,
+            "message": f"Verification code sent to +91 {norm[:2]}******{norm[-2:]}."
+        })
+    else:
+        logger.info("[SMS Stub Provider] Dispatched OTP code '%s' to mobile +91-%s", stub_code, norm)
+        return jsonify({
+            "success": True,
+            "message": f"Verification code sent to +91 {norm[:2]}******{norm[-2:]}.",
+            "stub_otp": stub_code  # Exposed in dev/test mode only
+        })
 
 
 @app.route("/api/auth/forgot-password/verify-reset", methods=["POST"])

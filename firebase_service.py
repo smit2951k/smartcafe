@@ -8,6 +8,47 @@ from config import Config
 
 logger = logging.getLogger(__name__)
 
+# Helper: check production environment
+def is_production() -> bool:
+    return bool(os.environ.get("VERCEL") or os.environ.get("PRODUCTION") or os.getenv("FLASK_ENV") == "production")
+
+
+def serialize_firestore_data(data):
+    """Recursively serializes Firestore timestamps and objects into JSON-compatible values."""
+    if isinstance(data, dict):
+        return {k: serialize_firestore_data(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [serialize_firestore_data(x) for x in data]
+    elif hasattr(data, "isoformat"):
+        return data.isoformat()
+    return data
+
+try:
+    from google.cloud.firestore_v1.base_query import FieldFilter
+except Exception:
+    FieldFilter = None
+
+def _where(col_ref, field_name: str, op: str, value):
+    """Executes Firestore where clause using modern FieldFilter if available."""
+    if FieldFilter is not None:
+        return col_ref.where(filter=FieldFilter(field_name, op, value))
+    return col_ref.where(field_name, op, value).isoformat()
+    return data
+
+
+try:
+    from google.cloud.firestore_v1.base_query import FieldFilter
+except Exception:
+    FieldFilter = None
+
+
+def _where(col_ref, field_name: str, op: str, value):
+    """Executes Firestore where clause using modern FieldFilter if available."""
+    if FieldFilter is not None:
+        return col_ref.where(filter=FieldFilter(field_name, op, value))
+    return col_ref.where(field_name, op, value)
+
+
 # Attempt to initialize Firebase Admin SDK (optional live cloud connection)
 firebase_app = None
 firestore_client = None
@@ -19,44 +60,50 @@ try:
     import firebase_admin
     from firebase_admin import credentials, firestore, auth, storage
 
-    if os.path.exists(Config.FIREBASE_CREDENTIALS_PATH):
-        cred = credentials.Certificate(Config.FIREBASE_CREDENTIALS_PATH)
-        firebase_app = firebase_admin.initialize_app(cred, {
-            'storageBucket': Config.FIREBASE_STORAGE_BUCKET
-        })
-        firestore_client = firestore.client()
-        firebase_auth = auth
-        try:
-            firebase_bucket = storage.bucket()
-        except Exception:
-            firebase_bucket = None
-
-        try:
-            list(firestore_client.collection("_health").limit(1).stream())
+    if not firebase_admin._apps:
+        if Config.FIREBASE_CLIENT_EMAIL and Config.FIREBASE_PRIVATE_KEY:
+            pk = Config.FIREBASE_PRIVATE_KEY.strip().strip('"').strip("'").replace("\\n", "\n")
+            cred = credentials.Certificate({
+                "type": "service_account",
+                "project_id": Config.FIREBASE_PROJECT_ID,
+                "private_key": pk,
+                "client_email": Config.FIREBASE_CLIENT_EMAIL,
+                "token_uri": "https://oauth2.googleapis.com/token",
+            })
+            firebase_app = firebase_admin.initialize_app(cred, {
+                'storageBucket': Config.FIREBASE_STORAGE_BUCKET
+            })
+            firestore_client = firestore.client()
+            firebase_auth = auth
+            try:
+                firebase_bucket = storage.bucket()
+            except Exception:
+                firebase_bucket = None
             is_firebase_live = True
-            logger.info("[Firestore] Successfully connected to live Cloud Firestore database for project: %s", Config.FIREBASE_PROJECT_ID)
-        except Exception as conn_err:
-            is_firebase_live = False
-            logger.warning("[Firestore] Using resilient local store. Error: %s", conn_err)
-    elif Config.FIREBASE_CLIENT_EMAIL and Config.FIREBASE_PRIVATE_KEY:
-        cred = credentials.Certificate({
-            "type": "service_account",
-            "project_id": Config.FIREBASE_PROJECT_ID,
-            "private_key": Config.FIREBASE_PRIVATE_KEY,
-            "client_email": Config.FIREBASE_CLIENT_EMAIL,
-            "token_uri": "https://oauth2.googleapis.com/token",
-        })
-        firebase_app = firebase_admin.initialize_app(cred, {
-            'storageBucket': Config.FIREBASE_STORAGE_BUCKET
-        })
+            logger.info("[Firestore] Successfully connected to live Cloud Firestore database via environment credentials: %s", Config.FIREBASE_PROJECT_ID)
+        elif os.path.exists(Config.FIREBASE_CREDENTIALS_PATH):
+            cred = credentials.Certificate(Config.FIREBASE_CREDENTIALS_PATH)
+            firebase_app = firebase_admin.initialize_app(cred, {
+                'storageBucket': Config.FIREBASE_STORAGE_BUCKET
+            })
+            firestore_client = firestore.client()
+            firebase_auth = auth
+            try:
+                firebase_bucket = storage.bucket()
+            except Exception:
+                firebase_bucket = None
+            is_firebase_live = True
+            logger.info("[Firestore] Successfully connected to live Cloud Firestore database via credentials file: %s", Config.FIREBASE_PROJECT_ID)
+        else:
+            logger.warning("No Firebase Admin credentials found. Local store will be used in development.")
+    else:
+        firebase_app = firebase_admin.get_app()
         firestore_client = firestore.client()
         firebase_auth = auth
         is_firebase_live = True
-        logger.info("Connected to Firebase Admin SDK via environment credentials.")
-    else:
-        logger.warning("No Firebase Admin credentials found. Initializing resilient local Firestore store.")
+        logger.info("[Firestore] Re-used existing Firebase app instance.")
 except Exception as e:
-    logger.warning(f"Firebase Admin initialization deferred: {e}. Using resilient local Firestore layer.")
+    logger.warning(f"Firebase Admin initialization deferred: {e}. Local fallback will be used if non-production.")
 
 
 def normalize_mobile(mobile_str: str) -> str:
@@ -515,17 +562,95 @@ DEFAULT_SEED_DATA = {
 }
 
 
+def _ensure_firestore_seeded(db):
+    """
+    Safely seeds initial collection documents into Cloud Firestore
+    ONLY if the target collection is completely empty.
+    DO NOT delete, overwrite, migrate, or reseed existing production data.
+    """
+    try:
+        # 1. Settings
+        settings_ref = db.collection("settings").document("general")
+        if not settings_ref.get().exists:
+            settings_ref.set(DEFAULT_SEED_DATA["settings"])
+            logger.info("[Firestore] Initialized settings/general document.")
+
+        # 2. Menu categories
+        cat_docs = list(db.collection("menu_categories").limit(1).stream())
+        if not cat_docs:
+            batch = db.batch()
+            for cat in DEFAULT_SEED_DATA["menu_categories"]:
+                batch.set(db.collection("menu_categories").document(cat["id"]), cat)
+            batch.commit()
+            logger.info("[Firestore] Initialized menu_categories collection.")
+
+        # 3. Menu items
+        item_docs = list(db.collection("menu_items").limit(1).stream())
+        if not item_docs:
+            batch = db.batch()
+            for item in DEFAULT_SEED_DATA["menu_items"]:
+                batch.set(db.collection("menu_items").document(item["id"]), item)
+            batch.commit()
+            logger.info("[Firestore] Initialized menu_items collection.")
+
+        # 4. Tables
+        table_docs = list(db.collection("tables").limit(1).stream())
+        if not table_docs:
+            batch = db.batch()
+            for tbl in DEFAULT_SEED_DATA["tables"]:
+                batch.set(db.collection("tables").document(str(tbl["number"])), tbl)
+            batch.commit()
+            logger.info("[Firestore] Initialized tables collection.")
+
+        # 5. Default Staff & Seed Users
+        user_docs = list(db.collection("users").limit(1).stream())
+        if not user_docs:
+            batch = db.batch()
+            for u in DEFAULT_SEED_DATA["users"]:
+                u_copy = dict(u)
+                if "password" in u_copy and not u_copy.get("password_hash"):
+                    u_copy["password_hash"] = generate_password_hash(u_copy.pop("password"))
+                batch.set(db.collection("users").document(u_copy["id"]), u_copy)
+            batch.commit()
+            logger.info("[Firestore] Initialized initial users collection with staff accounts.")
+
+        # 6. Offers
+        offer_docs = list(db.collection("offers").limit(1).stream())
+        if not offer_docs:
+            batch = db.batch()
+            for o in DEFAULT_SEED_DATA["offers"]:
+                doc_id = o.get("id") or o.get("code")
+                batch.set(db.collection("offers").document(doc_id), o)
+            batch.commit()
+            logger.info("[Firestore] Initialized offers collection.")
+
+    except Exception as e:
+        logger.error("[Firestore] Seed initialization check warning: %s", e)
+
+
 class FirestoreManager:
     """
-    Central database manager supporting local JSON persistence and Firestore SDK.
+    Central database manager supporting live Cloud Firestore and local JSON development fallback.
     """
     def __init__(self, local_file=None):
         if local_file is None:
             local_file = os.path.join(os.path.dirname(__file__), "local_firestore.json")
         self.local_file = local_file
-        self._load_local_data()
+        self.db = firestore_client
+        self.is_live = is_firebase_live
+
+        if self.is_live and self.db:
+            _ensure_firestore_seeded(self.db)
+            self._data = {}
+        else:
+            if is_production():
+                logger.error("[CRITICAL] Cloud Firestore client is NOT initialized in production!")
+            self._load_local_data()
 
     def _load_local_data(self):
+        if is_production():
+            self._data = json.loads(json.dumps(DEFAULT_SEED_DATA))
+            return
         if os.path.exists(self.local_file):
             try:
                 with open(self.local_file, "r", encoding="utf-8") as f:
@@ -538,6 +663,9 @@ class FirestoreManager:
         self._save_local_data()
 
     def _save_local_data(self):
+        if is_production():
+            logger.error("[CRITICAL] Attempted local filesystem write in production environment! Write aborted.")
+            raise RuntimeError("Local JSON persistence is disabled in production. Cloud Firestore is required.")
         try:
             with open(self.local_file, "w", encoding="utf-8") as f:
                 json.dump(self._data, f, indent=2, ensure_ascii=False)
@@ -545,31 +673,21 @@ class FirestoreManager:
             logger.error(f"Error saving local data: {e}")
 
     def _run_migrations(self):
-        """
-        Auto-migration on startup:
-        - Ensure password hashing for all users
-        - Strip email fields from customer records and ensure 10-digit mobile exists
-        - Ensure default staff accounts (admin, manager, barista)
-        - Ensure settings key exists
-        """
         changed = False
         if "settings" not in self._data:
             self._data["settings"] = DEFAULT_SEED_DATA["settings"]
             changed = True
         
-        # Ensure users array
         if "users" not in self._data:
             self._data["users"] = DEFAULT_SEED_DATA["users"]
             changed = True
 
-        # Check staff accounts
         usernames = {u.get("username") for u in self._data.get("users", []) if u.get("username")}
         for default_staff in DEFAULT_SEED_DATA["users"]:
             if default_staff.get("username") and default_staff["username"] not in usernames:
                 self._data["users"].append(default_staff)
                 changed = True
 
-        # Normalize mobile & passwords for existing users
         for user in self._data.get("users", []):
             if "email" in user:
                 del user["email"]
@@ -585,7 +703,6 @@ class FirestoreManager:
                     user["mobile"] = norm
                     changed = True
 
-        # Normalize orders: customer_mobile instead of customer_email
         for order in self._data.get("orders", []):
             if "customer_email" in order:
                 del order["customer_email"]
@@ -596,9 +713,30 @@ class FirestoreManager:
 
     # ── SETTINGS ─────────────────────────────────────────────────────────────
     def get_settings(self):
+        if self.is_live and self.db:
+            try:
+                doc = self.db.collection("settings").document("general").get()
+                if doc.exists:
+                    return serialize_firestore_data(doc.to_dict())
+                self.db.collection("settings").document("general").set(DEFAULT_SEED_DATA["settings"])
+                return DEFAULT_SEED_DATA["settings"]
+            except Exception as e:
+                logger.error("[Firestore] get_settings error: %s", e)
+                if is_production():
+                    raise
         return self._data.get("settings", DEFAULT_SEED_DATA["settings"])
 
     def update_settings(self, new_settings: dict):
+        if self.is_live and self.db:
+            try:
+                current = self.get_settings()
+                current.update(new_settings)
+                self.db.collection("settings").document("general").set(current, merge=True)
+                return serialize_firestore_data(current)
+            except Exception as e:
+                logger.error("[Firestore] update_settings error: %s", e)
+                if is_production():
+                    raise
         current = self.get_settings()
         current.update(new_settings)
         self._data["settings"] = current
@@ -607,9 +745,42 @@ class FirestoreManager:
 
     # ── MENU ─────────────────────────────────────────────────────────────────
     def get_categories(self):
+        if self.is_live and self.db:
+            try:
+                docs = self.db.collection("menu_categories").stream()
+                cats = [serialize_firestore_data(d.to_dict()) for d in docs]
+                if cats:
+                    return sorted(cats, key=lambda c: c.get("order", 0))
+                for c in DEFAULT_SEED_DATA["menu_categories"]:
+                    self.db.collection("menu_categories").document(c["id"]).set(c)
+                return DEFAULT_SEED_DATA["menu_categories"]
+            except Exception as e:
+                logger.error("[Firestore] get_categories error: %s", e)
+                if is_production():
+                    raise
         return self._data.get("menu_categories", DEFAULT_SEED_DATA["menu_categories"])
 
     def get_menu_items(self, category=None, search=None, only_available=True):
+        if self.is_live and self.db:
+            try:
+                docs = self.db.collection("menu_items").stream()
+                items = [serialize_firestore_data(d.to_dict()) for d in docs]
+                if not items:
+                    for itm in DEFAULT_SEED_DATA["menu_items"]:
+                        self.db.collection("menu_items").document(itm["id"]).set(itm)
+                    items = [dict(i) for i in DEFAULT_SEED_DATA["menu_items"]]
+                if only_available:
+                    items = [i for i in items if i.get("available", True)]
+                if category and category != "all":
+                    items = [i for i in items if i.get("category") == category]
+                if search:
+                    q = search.lower().strip()
+                    items = [i for i in items if q in i.get("name", "").lower() or q in i.get("description", "").lower() or q in i.get("tagline", "").lower()]
+                return items
+            except Exception as e:
+                logger.error("[Firestore] get_menu_items error: %s", e)
+                if is_production():
+                    raise
         items = self._data.get("menu_items", [])
         if only_available:
             items = [i for i in items if i.get("available", True)]
@@ -621,12 +792,33 @@ class FirestoreManager:
         return items
 
     def get_menu_item_by_id(self, item_id):
+        if self.is_live and self.db:
+            try:
+                doc = self.db.collection("menu_items").document(str(item_id)).get()
+                if doc.exists:
+                    return serialize_firestore_data(doc.to_dict())
+                q = list(_where(self.db.collection("menu_items"), "slug", "==", str(item_id)).limit(1).stream())
+                if q:
+                    return serialize_firestore_data(q[0].to_dict())
+                return None
+            except Exception as e:
+                logger.error("[Firestore] get_menu_item_by_id error: %s", e)
+                if is_production():
+                    raise
         for item in self._data.get("menu_items", []):
             if item.get("id") == item_id or item.get("slug") == item_id:
                 return item
         return None
 
     def save_menu_item(self, item_dict):
+        if self.is_live and self.db:
+            try:
+                self.db.collection("menu_items").document(str(item_dict["id"])).set(item_dict, merge=True)
+                return item_dict
+            except Exception as e:
+                logger.error("[Firestore] save_menu_item error: %s", e)
+                if is_production():
+                    raise
         items = self._data.get("menu_items", [])
         idx = next((i for i, x in enumerate(items) if x.get("id") == item_dict.get("id")), -1)
         if idx >= 0:
@@ -638,23 +830,53 @@ class FirestoreManager:
         return item_dict
 
     def toggle_menu_item_86(self, item_id, available=None):
+        if self.is_live and self.db:
+            try:
+                item = self.get_menu_item_by_id(item_id)
+                if not item:
+                    return None
+                new_avail = not item.get("available", True) if available is None else bool(available)
+                self.db.collection("menu_items").document(str(item["id"])).update({"available": new_avail})
+                item["available"] = new_avail
+                return item
+            except Exception as e:
+                logger.error("[Firestore] toggle_menu_item_86 error: %s", e)
+                if is_production():
+                    raise
         item = self.get_menu_item_by_id(item_id)
         if not item:
             return None
-        if available is None:
-            item["available"] = not item.get("available", True)
-        else:
-            item["available"] = bool(available)
+        item["available"] = not item.get("available", True) if available is None else bool(available)
         self._save_local_data()
         return item
 
     def bulk_toggle_menu(self, available: bool):
+        if self.is_live and self.db:
+            try:
+                docs = list(self.db.collection("menu_items").stream())
+                batch = self.db.batch()
+                for d in docs:
+                    batch.update(d.reference, {"available": available})
+                batch.commit()
+                return len(docs)
+            except Exception as e:
+                logger.error("[Firestore] bulk_toggle_menu error: %s", e)
+                if is_production():
+                    raise
         for item in self._data.get("menu_items", []):
             item["available"] = available
         self._save_local_data()
         return len(self._data.get("menu_items", []))
 
     def delete_menu_item(self, item_id):
+        if self.is_live and self.db:
+            try:
+                self.db.collection("menu_items").document(str(item_id)).delete()
+                return True
+            except Exception as e:
+                logger.error("[Firestore] delete_menu_item error: %s", e)
+                if is_production():
+                    raise
         items = self._data.get("menu_items", [])
         initial_len = len(items)
         items = [i for i in items if i.get("id") != item_id]
@@ -666,15 +888,47 @@ class FirestoreManager:
 
     # ── TABLES ───────────────────────────────────────────────────────────────
     def get_tables(self):
+        if self.is_live and self.db:
+            try:
+                docs = self.db.collection("tables").stream()
+                tbls = [serialize_firestore_data(d.to_dict()) for d in docs]
+                if tbls:
+                    return sorted(tbls, key=lambda t: str(t.get("number", "")))
+                for t in DEFAULT_SEED_DATA["tables"]:
+                    self.db.collection("tables").document(str(t["number"])).set(t)
+                return DEFAULT_SEED_DATA["tables"]
+            except Exception as e:
+                logger.error("[Firestore] get_tables error: %s", e)
+                if is_production():
+                    raise
         return self._data.get("tables", DEFAULT_SEED_DATA["tables"])
 
     def get_table_by_number(self, table_number):
+        tbl_str = str(table_number).strip().lower()
         for t in self.get_tables():
-            if str(t.get("number")).lower() == str(table_number).lower() or str(t.get("id")).lower() == str(table_number).lower():
+            if str(t.get("number", "")).lower() == tbl_str or str(t.get("id", "")).lower() == tbl_str:
                 return t
         return None
 
     def update_table_status(self, table_number, status, active_order_id=None):
+        if self.is_live and self.db:
+            try:
+                tbl = self.get_table_by_number(table_number)
+                if not tbl:
+                    return None
+                doc_id = str(tbl.get("number") or tbl.get("id"))
+                update_data = {"status": status}
+                if active_order_id is not None:
+                    update_data["active_order_id"] = active_order_id
+                elif status == "free":
+                    update_data["active_order_id"] = None
+                self.db.collection("tables").document(doc_id).set(update_data, merge=True)
+                tbl.update(update_data)
+                return serialize_firestore_data(tbl)
+            except Exception as e:
+                logger.error("[Firestore] update_table_status error: %s", e)
+                if is_production():
+                    raise
         for t in self._data.get("tables", []):
             if str(t.get("number")).lower() == str(table_number).lower() or str(t.get("id")).lower() == str(table_number).lower():
                 t["status"] = status
@@ -688,33 +942,88 @@ class FirestoreManager:
 
     # ── ORDERS ───────────────────────────────────────────────────────────────
     def get_orders(self):
+        if self.is_live and self.db:
+            try:
+                docs = self.db.collection("orders").stream()
+                orders = []
+                for d in docs:
+                    data = d.to_dict()
+                    if "id" not in data:
+                        data["id"] = d.id
+                    orders.append(serialize_firestore_data(data))
+                return sorted(orders, key=lambda o: str(o.get("created_at", "")), reverse=True)
+            except Exception as e:
+                logger.error("[Firestore] get_orders error: %s", e)
+                if is_production():
+                    raise
         orders = self._data.get("orders", [])
-        # Return sorted by created_at desc
         return sorted(orders, key=lambda o: o.get("created_at", ""), reverse=True)
 
     def get_order_by_id(self, order_id):
+        if self.is_live and self.db:
+            try:
+                doc = self.db.collection("orders").document(str(order_id)).get()
+                if doc.exists:
+                    data = doc.to_dict()
+                    if "id" not in data:
+                        data["id"] = doc.id
+                    return serialize_firestore_data(data)
+                q = list(_where(self.db.collection("orders"), "id", "==", str(order_id)).limit(1).stream())
+                if q:
+                    data = q[0].to_dict()
+                    if "id" not in data:
+                        data["id"] = q[0].id
+                    return serialize_firestore_data(data)
+                return None
+            except Exception as e:
+                logger.error("[Firestore] get_order_by_id error: %s", e)
+                if is_production():
+                    raise
         for o in self._data.get("orders", []):
             if o.get("id") == order_id or str(o.get("order_id")) == str(order_id):
                 return o
         return None
 
     def create_order(self, order_dict):
+        import time
         if "id" not in order_dict:
-            order_dict["id"] = f"ORD-{len(self._data.get('orders', [])) + 101}"
+            order_dict["id"] = f"ORD-{int(time.time())}"
         if "created_at" not in order_dict:
             order_dict["created_at"] = datetime.now().isoformat()
         if "timeline" not in order_dict:
             order_dict["timeline"] = [
                 {"status": order_dict.get("status", "PENDING"), "time": order_dict["created_at"], "actor": "Customer"}
             ]
-        self._data.setdefault("orders", []).append(order_dict)
 
-        # Update table status
+        if self.is_live and self.db:
+            try:
+                self.db.collection("orders").document(str(order_dict["id"])).set(order_dict)
+
+                tbl = order_dict.get("table_number")
+                if tbl and str(tbl).lower() != "takeaway":
+                    self.update_table_status(tbl, "occupied", active_order_id=order_dict["id"])
+
+                cust_mobile = order_dict.get("customer_mobile")
+                if cust_mobile:
+                    user = self.get_user_by_mobile(cust_mobile)
+                    if user:
+                        new_count = user.get("orders_count", 0) + 1
+                        new_spend = user.get("total_spend", 0) + float(order_dict.get("total", 0))
+                        self.db.collection("users").document(user["id"]).update({
+                            "orders_count": new_count,
+                            "total_spend": new_spend,
+                            "last_visit": order_dict["created_at"]
+                        })
+                return order_dict
+            except Exception as e:
+                logger.error("[Firestore] create_order error: %s", e)
+                if is_production():
+                    raise
+
+        self._data.setdefault("orders", []).append(order_dict)
         tbl = order_dict.get("table_number")
         if tbl and str(tbl).lower() != "takeaway":
             self.update_table_status(tbl, "occupied", active_order_id=order_dict["id"])
-
-        # Update customer spend
         cust_mobile = order_dict.get("customer_mobile")
         if cust_mobile:
             user = self.get_user_by_mobile(cust_mobile)
@@ -722,19 +1031,45 @@ class FirestoreManager:
                 user["orders_count"] = user.get("orders_count", 0) + 1
                 user["total_spend"] = user.get("total_spend", 0) + float(order_dict.get("total", 0))
                 user["last_visit"] = order_dict["created_at"]
-
         self._save_local_data()
         return order_dict
 
     def update_order_status(self, order_id, status, notes=None, actor="Staff"):
+        if self.is_live and self.db:
+            try:
+                doc_ref = self.db.collection("orders").document(str(order_id))
+                doc = doc_ref.get()
+                if not doc.exists:
+                    q = list(_where(self.db.collection("orders"), "id", "==", str(order_id)).limit(1).stream())
+                    if not q:
+                        return None
+                    doc_ref = q[0].reference
+                    o = q[0].to_dict()
+                else:
+                    o = doc.to_dict()
+
+                o["status"] = status
+                now_str = datetime.now().isoformat()
+                timeline = o.setdefault("timeline", [])
+                timeline.append({"status": status, "time": now_str, "actor": actor, "notes": notes or ""})
+                doc_ref.update({"status": status, "timeline": timeline})
+
+                if status in ("COMPLETED", "CANCELLED"):
+                    tbl = o.get("table_number")
+                    if tbl and str(tbl).lower() != "takeaway":
+                        self.update_table_status(tbl, "free", active_order_id=None)
+                return serialize_firestore_data(o)
+            except Exception as e:
+                logger.error("[Firestore] update_order_status error: %s", e)
+                if is_production():
+                    raise
+
         for o in self._data.get("orders", []):
             if o.get("id") == order_id:
                 o["status"] = status
                 now_str = datetime.now().isoformat()
                 timeline = o.setdefault("timeline", [])
                 timeline.append({"status": status, "time": now_str, "actor": actor, "notes": notes or ""})
-                
-                # Table status sync on complete/cancel
                 if status in ("COMPLETED", "CANCELLED"):
                     tbl = o.get("table_number")
                     if tbl and str(tbl).lower() != "takeaway":
@@ -745,26 +1080,64 @@ class FirestoreManager:
 
     # ── RESERVATIONS ─────────────────────────────────────────────────────────
     def get_reservations(self):
+        if self.is_live and self.db:
+            try:
+                docs = self.db.collection("reservations").stream()
+                res = [serialize_firestore_data(d.to_dict()) for d in docs]
+                return sorted(res, key=lambda r: (str(r.get("date", "")), str(r.get("time", ""))), reverse=True)
+            except Exception as e:
+                logger.error("[Firestore] get_reservations error: %s", e)
+                if is_production():
+                    raise
         return sorted(self._data.get("reservations", []), key=lambda r: (r.get("date", ""), r.get("time", "")), reverse=True)
 
     def get_reservation_by_id(self, res_id):
+        if self.is_live and self.db:
+            try:
+                doc = self.db.collection("reservations").document(str(res_id)).get()
+                return serialize_firestore_data(doc.to_dict()) if doc.exists else None
+            except Exception as e:
+                logger.error("[Firestore] get_reservation_by_id error: %s", e)
+                if is_production():
+                    raise
         for r in self._data.get("reservations", []):
             if r.get("id") == res_id:
                 return r
         return None
 
     def create_reservation(self, res_dict):
+        import time
         if "id" not in res_dict:
-            res_dict["id"] = f"RES-{len(self._data.get('reservations', [])) + 201}"
+            res_dict["id"] = f"RES-{int(time.time())}"
         if "created_at" not in res_dict:
             res_dict["created_at"] = datetime.now().isoformat()
         if "status" not in res_dict:
             res_dict["status"] = "CONFIRMED"
+
+        if self.is_live and self.db:
+            try:
+                self.db.collection("reservations").document(str(res_dict["id"])).set(res_dict)
+                return res_dict
+            except Exception as e:
+                logger.error("[Firestore] create_reservation error: %s", e)
+                if is_production():
+                    raise
+
         self._data.setdefault("reservations", []).append(res_dict)
         self._save_local_data()
         return res_dict
 
     def update_reservation_status(self, res_id, status):
+        if self.is_live and self.db:
+            try:
+                doc_ref = self.db.collection("reservations").document(str(res_id))
+                doc_ref.update({"status": status})
+                doc = doc_ref.get()
+                return serialize_firestore_data(doc.to_dict()) if doc.exists else None
+            except Exception as e:
+                logger.error("[Firestore] update_reservation_status error: %s", e)
+                if is_production():
+                    raise
         for r in self._data.get("reservations", []):
             if r.get("id") == res_id:
                 r["status"] = status
@@ -774,21 +1147,47 @@ class FirestoreManager:
 
     # ── USERS & AUTH ─────────────────────────────────────────────────────────
     def get_users(self):
+        if self.is_live and self.db:
+            try:
+                docs = self.db.collection("users").stream()
+                return [serialize_firestore_data(d.to_dict()) for d in docs]
+            except Exception as e:
+                logger.error("[Firestore] get_users error: %s", e)
+                if is_production():
+                    raise
         return self._data.get("users", [])
 
     def get_user_by_mobile(self, mobile):
         norm = normalize_mobile(mobile)
         if not norm:
             return None
+        if self.is_live and self.db:
+            try:
+                q = list(_where(self.db.collection("users"), "mobile", "==", norm).limit(1).stream())
+                return serialize_firestore_data(q[0].to_dict()) if q else None
+            except Exception as e:
+                logger.error("[Firestore] get_user_by_mobile error: %s", e)
+                if is_production():
+                    raise
         for u in self._data.get("users", []):
             if u.get("mobile") == norm:
                 return u
         return None
 
     def get_user_by_username(self, username):
-        u_clean = str(username).strip().lower()
+        clean_u = str(username).strip().lower()
+        if not clean_u:
+            return None
+        if self.is_live and self.db:
+            try:
+                q = list(_where(self.db.collection("users"), "username", "==", clean_u).limit(1).stream())
+                return serialize_firestore_data(q[0].to_dict()) if q else None
+            except Exception as e:
+                logger.error("[Firestore] get_user_by_username error: %s", e)
+                if is_production():
+                    raise
         for u in self._data.get("users", []):
-            if u.get("username", "").strip().lower() == u_clean:
+            if u.get("username", "").strip().lower() == clean_u:
                 return u
         return None
 
@@ -815,6 +1214,16 @@ class FirestoreManager:
             "total_spend": 0,
             "last_visit": datetime.now().isoformat()
         }
+
+        if self.is_live and self.db:
+            try:
+                self.db.collection("users").document(user["id"]).set(user)
+                return user
+            except Exception as e:
+                logger.error("[Firestore] create_customer error: %s", e)
+                if is_production():
+                    raise
+
         self._data.setdefault("users", []).append(user)
         self._save_local_data()
         return user
@@ -831,16 +1240,32 @@ class FirestoreManager:
         return None
 
     def verify_staff(self, identifier: str, password: str):
-        """
-        Verify staff login by username or mobile.
-        """
         clean_id = str(identifier).strip().lower()
         user = None
-        for u in self._data.get("users", []):
-            if u.get("role") in ("admin", "manager", "staff"):
-                if u.get("username", "").lower() == clean_id or u.get("mobile") == clean_id:
-                    user = u
-                    break
+        if self.is_live and self.db:
+            try:
+                q_user = list(_where(self.db.collection("users"), "username", "==", clean_id).limit(1).stream())
+                if q_user:
+                    cand = q_user[0].to_dict()
+                    if cand.get("role") in ("admin", "manager", "staff"):
+                        user = cand
+                if not user:
+                    q_mob = list(_where(self.db.collection("users"), "mobile", "==", clean_id).limit(1).stream())
+                    if q_mob:
+                        cand = q_mob[0].to_dict()
+                        if cand.get("role") in ("admin", "manager", "staff"):
+                            user = cand
+            except Exception as e:
+                logger.error("[Firestore] verify_staff error: %s", e)
+                if is_production():
+                    raise
+        else:
+            for u in self._data.get("users", []):
+                if u.get("role") in ("admin", "manager", "staff"):
+                    if u.get("username", "").lower() == clean_id or u.get("mobile") == clean_id:
+                        user = u
+                        break
+
         if not user:
             return None
         if check_password_hash(user.get("password_hash", ""), password):
@@ -854,7 +1279,19 @@ class FirestoreManager:
             raise ValueError("No account found with this mobile number.")
         if len(new_password) < 8:
             raise ValueError("New password must be at least 8 characters.")
-        user["password_hash"] = generate_password_hash(new_password)
+
+        new_hash = generate_password_hash(new_password)
+        user["password_hash"] = new_hash
+
+        if self.is_live and self.db:
+            try:
+                self.db.collection("users").document(user["id"]).update({"password_hash": new_hash})
+                return user
+            except Exception as e:
+                logger.error("[Firestore] reset_customer_password error: %s", e)
+                if is_production():
+                    raise
+
         self._save_local_data()
         return user
 
@@ -862,7 +1299,8 @@ class FirestoreManager:
         clean_u = str(username).strip().lower()
         if self.get_user_by_username(clean_u):
             raise ValueError("Username already exists.")
-        norm = normalize_mobile(mobile) if mobile else f"99999{len(self.get_users()):05d}"
+        import time
+        norm = normalize_mobile(mobile) if mobile else f"99999{int(time.time())%100000:05d}"
         user = {
             "id": f"staff-{datetime.now().strftime('%y%m%d%H%M%S')}",
             "username": clean_u,
@@ -872,13 +1310,33 @@ class FirestoreManager:
             "role": role if role in ("admin", "manager", "staff") else "staff",
             "created_at": datetime.now().isoformat()
         }
+        if self.is_live and self.db:
+            try:
+                self.db.collection("users").document(user["id"]).set(user)
+                return user
+            except Exception as e:
+                logger.error("[Firestore] add_staff_account error: %s", e)
+                if is_production():
+                    raise
         self._data.setdefault("users", []).append(user)
         self._save_local_data()
         return user
 
     def delete_staff_account(self, staff_id):
+        if staff_id == "admin":
+            raise ValueError("Cannot delete master admin account.")
+        if self.is_live and self.db:
+            try:
+                doc = self.db.collection("users").document(staff_id).get()
+                if doc.exists and doc.to_dict().get("username") == "admin":
+                    raise ValueError("Cannot delete master admin account.")
+                self.db.collection("users").document(staff_id).delete()
+                return True
+            except Exception as e:
+                logger.error("[Firestore] delete_staff_account error: %s", e)
+                if is_production():
+                    raise
         users = self._data.get("users", [])
-        # Prevent deleting the master admin
         for u in users:
             if u.get("id") == staff_id or u.get("username") == staff_id:
                 if u.get("username") == "admin":
@@ -891,9 +1349,25 @@ class FirestoreManager:
         return False
 
     def get_customers_aggregated(self):
-        """
-        Returns all customer profiles enriched with dynamic order stats.
-        """
+        if self.is_live and self.db:
+            try:
+                q = _where(self.db.collection("users"), "role", "==", "customer").stream()
+                customers = [serialize_firestore_data(d.to_dict()) for d in q]
+                orders = self.get_orders()
+                for c in customers:
+                    c_mobile = c.get("mobile")
+                    c_orders = [o for o in orders if o.get("customer_mobile") == c_mobile and o.get("status") != "CANCELLED"]
+                    c["order_count"] = len(c_orders)
+                    c["total_spend"] = sum(float(o.get("total", 0)) for o in c_orders)
+                    if c_orders:
+                        c["last_visit"] = c_orders[0].get("created_at")
+                    elif "last_visit" not in c:
+                        c["last_visit"] = c.get("created_at")
+                return customers
+            except Exception as e:
+                logger.error("[Firestore] get_customers_aggregated error: %s", e)
+                if is_production():
+                    raise
         customers = [u for u in self._data.get("users", []) if u.get("role") == "customer"]
         orders = self.get_orders()
         for c in customers:
@@ -909,6 +1383,20 @@ class FirestoreManager:
 
     # ── OFFERS & REVIEWS ──────────────────────────────────────────────────────
     def get_offers(self):
+        if self.is_live and self.db:
+            try:
+                docs = self.db.collection("offers").stream()
+                offers = [serialize_firestore_data(d.to_dict()) for d in docs]
+                if offers:
+                    return offers
+                for o in DEFAULT_SEED_DATA["offers"]:
+                    doc_id = o.get("id") or o.get("code")
+                    self.db.collection("offers").document(doc_id).set(o)
+                return DEFAULT_SEED_DATA["offers"]
+            except Exception as e:
+                logger.error("[Firestore] get_offers error: %s", e)
+                if is_production():
+                    raise
         return self._data.get("offers", DEFAULT_SEED_DATA["offers"])
 
     def get_offer_by_code(self, code):
@@ -918,11 +1406,30 @@ class FirestoreManager:
         return None
 
     def get_reviews(self):
+        if self.is_live and self.db:
+            try:
+                docs = self.db.collection("reviews").stream()
+                return [serialize_firestore_data(d.to_dict()) for d in docs]
+            except Exception as e:
+                logger.error("[Firestore] get_reviews error: %s", e)
+                if is_production():
+                    raise
         return self._data.get("reviews", [])
 
     def add_review(self, review_dict):
-        review_dict["id"] = f"REV-{len(self._data.get('reviews', [])) + 1}"
-        review_dict["created_at"] = datetime.now().isoformat()
+        import time
+        if "id" not in review_dict:
+            review_dict["id"] = f"REV-{int(time.time())}"
+        if "created_at" not in review_dict:
+            review_dict["created_at"] = datetime.now().isoformat()
+        if self.is_live and self.db:
+            try:
+                self.db.collection("reviews").document(review_dict["id"]).set(review_dict)
+                return review_dict
+            except Exception as e:
+                logger.error("[Firestore] add_review error: %s", e)
+                if is_production():
+                    raise
         self._data.setdefault("reviews", []).append(review_dict)
         self._save_local_data()
         return review_dict
