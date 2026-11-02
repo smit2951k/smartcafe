@@ -1,0 +1,125 @@
+================================================================================
+                           AROMA CAFE (SMART CAFE)
+                       PROJECT ARCHITECTURE & OVERVIEW
+================================================================================
+
+1. PROJECT SUMMARY
+------------------
+Aroma Cafe (formerly SmartCafe) is a high-performance, full-stack digital cafe 
+management and contactless table-ordering system. Designed specifically for modern 
+hospitality workflows in India, it features dynamic QR-table detection, guest tray 
+management, Indian mobile-number authentication, instant counter/UPI settlement, 
+and a real-time administrative operations console with Kanban order boards.
+
+
+2. CORE PROGRAMMING LANGUAGES & RUNTIMES
+----------------------------------------
+* Python 3.10+      : Powers the entire backend web server, business logic, authentication,
+                      order processing algorithms, security decorators, and database operations.
+* JavaScript (ES6+) : Powers all client-side interactions, local cart state management, 
+                      live 5-second polling feeds, QR code webcam scanning, interactive HTML5
+                      Canvas financial charts, and Web Audio procedural chimes.
+* HTML5             : Semantic markup rendered server-side via the Jinja2 templating engine.
+* CSS3              : Custom responsive design system using CSS variables (tokens), Flexbox,
+                      and CSS Grid. Zero heavy CSS framework dependencies (no Tailwind).
+
+
+3. FRAMEWORKS, LIBRARIES & TOOLS
+--------------------------------
+A. Backend (Python):
+   - Flask (v3.0+)        : Lightweight, flexible WSGI web application framework.
+   - Jinja2               : Server-side templating engine for dynamic HTML rendering.
+   - Werkzeug             : Password hashing (generate_password_hash / check_password_hash),
+                            secure HTTP session cookie handling.
+   - Flask-CORS           : Handling cross-origin requests for decoupled services.
+   - python-dotenv        : Environment variable management (.env).
+   - Razorpay Python SDK  : Payment gateway integration (Order creation & HMAC-SHA256 verification).
+   - Firebase Admin SDK   : Google Cloud Firestore database & Cloud Storage connectivity.
+   - qrcode & Pillow      : Dynamic server-side table QR code image generation.
+
+B. Frontend (Vanilla Web Technologies):
+   - HTML5 / Jinja2 Templates:
+     * Customer layouts   : templates/base.html, templates/partials/nav.html & footer.html
+     * Customer pages     : index, menu, menu_detail, cart, checkout, reservations, account,
+                            order_status, scan_table, table_detected, login, about, gallery.
+     * Admin layouts      : templates/admin/base.html, templates/admin/dashboard.html,
+                            templates/admin/login.html.
+   - CSS System           :
+     * static/css/variables.css : Design tokens (brand colors, typography, spacing, shadows).
+     * static/css/base.css      : Reset styles, typography scales, accessibility focus rings.
+     * static/css/style.css     : Customer-facing luxury cafe styling.
+     * static/css/admin.css     : Admin operations dashboard styling (Sidebar, Kanban, Modals).
+   - JavaScript Modules   :
+     * static/js/auth.js        : Mobile number validation, password strength meters, OTP modal.
+     * static/js/cart.js        : LocalStorage tray persistence, table binding, price calculations.
+     * static/js/admin.js       : 5s live-feed polling, Kanban drag/tap status transitions,
+                                  HTML5 Canvas 7-day revenue chart, kitchen ticket printing.
+     * static/js/qr_scanner.js  : Camera QR code scanning powered by html5-qrcode.min.js.
+
+C. Database & Data Persistence:
+   - Primary: Google Cloud Firestore (via Firebase Admin SDK).
+   - Resilient Fallback: `local_firestore.json` providing local JSON persistence with
+     in-memory locking, automatic schema migration, and seed management.
+
+
+4. KEY SYSTEM MODULES & CAPABILITIES
+------------------------------------
+1. Authentication & Security (Customer Facing):
+   - 100% Mobile-Only Authentication (strictly no email).
+   - Validates Indian mobile numbers (10 digits starting with 6, 7, 8, or 9).
+   - Passwords cryptographically hashed using Werkzeug PBKDF2:SHA256.
+   - Rate limiting: 5 failed attempts trigger a 15-minute terminal lockout (HTTP 429).
+   - Forgot Password: OTP verification flow with stub SMS provider logging.
+
+2. Table & Ordering Experience:
+   - Table Detection via URL query parameter (/table/<num>) or Camera QR Scanner.
+   - Persistent LocalStorage tray with instant customization and notes.
+   - Real-time tax calculation conforming to Indian GST standards (5%).
+   - Dual payment options:
+     * Pay at Counter (instant kitchen ticket dispatch).
+     * Razorpay / UPI (instant digital settlement with simulation fallback in dev).
+
+3. Administrative Operations Console (/admin):
+   - Role-Based Access Control (RBAC): Enforced on server for admin, manager, and staff.
+   - Left collapsible navigation sidebar (Overview, Orders, Reservations, Tables, Menu, Customers, Settings).
+   - Live top bar with real-time clock, sound mute/unmute toggle, and sync status indicator.
+   - Overview Dashboard: KPI metrics with vs-yesterday trends, lightweight SVG/Canvas revenue chart.
+   - Orders Kanban: 4 operational columns (Pending -> Preparing -> Ready on Pass -> Completed).
+     Color-coded elapsed timers (Amber >10 min, Red >20 min).
+   - Menu Management: Instant 86 item availability toggles and bulk out-of-stock switches.
+   - Tables Floor Map: Visual grid displaying live status (Free, Occupied, Needs Cleaning).
+   - Customer Directory: Lifetime spend aggregation, visit counter, and order history drawer.
+
+
+5. PROJECT DIRECTORY STRUCTURE
+------------------------------
+smart cafe/
+├── Amora cage.txt                # This project overview document
+├── Aroma cafe.txt                # Alternative naming for convenience
+├── .env                          # Local secrets & API keys (git-ignored)
+└── smartcafe/
+    ├── app.py                    # Core Flask application, routing & API endpoints
+    ├── config.py                 # Configuration loader (Tax, Secrets, Firebase, Razorpay)
+    ├── firebase_service.py       # Firestore database manager & local persistence engine
+    ├── razorpay_service.py       # Razorpay order generation & signature verification
+    ├── requirements.txt          # Python dependencies
+    ├── vercel.json               # Vercel serverless WSGI deployment configuration
+    ├── seed_data.py              # Database seeding script with realistic sample data
+    ├── test_aroma_flows.py       # 8-part automated verification test suite
+    ├── qrcode/                   # Generated PNG QR codes for cafe tables
+    ├── static/
+    │   ├── css/                  # Modular styles (variables, base, style, admin)
+    │   └── js/                   # Modular client scripts (auth, cart, admin, qr_scanner)
+    └── templates/
+        ├── admin/                # Admin templates (base, dashboard, login)
+        ├── partials/             # Reusable UI partials (nav, footer, menu cards)
+        └── *.html                # Customer-facing views (index, menu, checkout, etc.)
+
+
+6. DEPLOYMENT & HOSTING
+-----------------------
+* Version Control : Git repository hosted on GitHub (https://github.com/smit2951k/smartcafe.git).
+* Cloud Hosting   : Vercel (using @vercel/python WSGI runner configured via vercel.json).
+* Local Server    : Python Flask built-in development server running on port 5000.
+================================================================================
+

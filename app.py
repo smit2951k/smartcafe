@@ -18,7 +18,12 @@ from razorpay_service import RazorpayService
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
+_base_dir = os.path.dirname(os.path.abspath(__file__))
+app = Flask(
+    __name__,
+    template_folder=os.path.join(_base_dir, "templates"),
+    static_folder=os.path.join(_base_dir, "static")
+)
 app.config.from_object(Config)
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
